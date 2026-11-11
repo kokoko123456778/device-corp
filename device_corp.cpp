@@ -1146,9 +1146,17 @@ void progressBar(SDL_Rect r, double f, Col c) {
 // ============================================================================
 //  Игровые данные
 // ============================================================================
-enum { P_SIZE, P_COLOR, P_SCREEN, P_CPU, P_BATT, P_SPK, P_PACK, P_CAMN, P_CAMRES, P_CAMSZ, P_OS, P_CPUSRC, NPARAM };
+enum { P_SIZE, P_COLOR, P_SCREEN, P_CPU, P_BATT, P_SPK, P_PACK, P_CAMN, P_CAMRES, P_CAMSZ, P_OS, P_CPUSRC,
+       // Характеристики «как в карточке товара»: покупные компоненты, появляются на рынке по годам
+       P_MAT, P_IP, P_HZ, P_GLASS, P_RAM, P_ROM, P_STAB, P_FRONT, P_CELL, P_SIM, P_WIFI, P_BT, P_NFC, P_GPS, P_IR,
+       P_ANC, P_FAST, P_WLESS, P_CHG, P_BIO, P_SENS, NPARAM };
+const int NPARAM_OLD = 12;  // столько параметров было в сохранениях до версии 6
 const char* PARAM_NAMES[NPARAM] = {"Размер", "Цвет", "Экран", "Процессор", "Батарея", "Динамики", "Упаковка",
-                                    "Камеры", "Разрешение", "Сенсор", "ОС", "Источник ЦП"};
+                                    "Камеры", "Разрешение", "Сенсор", "ОС", "Источник ЦП",
+                                    "Материал", "Влагозащита", "Частота", "Стекло", "ОЗУ", "Накопитель",
+                                    "Стабилизация", "Фронталка", "Сеть", "SIM-карты", "Wi-Fi", "Bluetooth", "NFC",
+                                    "Навигация", "ИК-порт", "Шумодав", "Быстр. заряд", "Беспр. заряд",
+                                    "Зарядное", "Биометрия", "Датчики"};
 
 struct Opt { const char* name; double cost; double q; };
 const Opt SIZE_OPT[4] = {{"Компактный", 0.85, 0}, {"Стандарт", 1.0, 0}, {"Большой", 1.2, 0}, {"Огромный", 1.45, 0}};
@@ -1184,7 +1192,47 @@ Opt CPUSRC_OPT[6] = {{"Без чипа", 0, 0}, {"Свой процессор", 
                      {"Лицензия: 32-бит ЦП", 12, 18}, {"Лицензия: мобильный SoC", 18, 30},
                      {"Лицензия: ИИ-ускоритель", 30, 44}};
 
+// ----- Новые характеристики. У варианта 0 («Нет») качество 0: отсутствие функции тянет оценку вниз,
+// как только она появляется на рынке.
+const Opt MAT_OPT[5] = {{"Пластик", 0, 6}, {"Алюминий", 5, 14}, {"Нержавеющая сталь", 10, 20},
+                        {"Стекло и металл", 18, 30}, {"Титан", 30, 40}};
+const Opt IP_OPT[6] = {{"Нет", 0, 0}, {"Защита от брызг", 3, 10}, {"IP54", 6, 18}, {"IP67", 10, 26},
+                       {"IP68", 14, 34}, {"IP69K", 20, 42}};
+const Opt HZ_OPT[5] = {{"60 Гц", 0, 8}, {"90 Гц", 6, 18}, {"120 Гц", 12, 28}, {"144 Гц", 18, 36}, {"165 Гц", 24, 44}};
+const Opt GLASS_OPT[5] = {{"Обычное стекло", 0, 4}, {"Минеральное", 3, 10}, {"Закалённое", 7, 18},
+                          {"Ударопрочное", 12, 28}, {"Керамический щит", 20, 38}};
+const Opt RAM_OPT[7] = {{"Нет", 0, 0}, {"4 КБ", 5, 8}, {"64 КБ", 8, 14}, {"4 МБ", 12, 22}, {"256 МБ", 18, 30},
+                        {"4 ГБ", 26, 40}, {"12 ГБ", 38, 50}};
+const Opt ROM_OPT[7] = {{"Нет", 0, 0}, {"16 КБ", 5, 8}, {"1 МБ", 8, 14}, {"32 МБ", 12, 22}, {"4 ГБ", 18, 30},
+                        {"64 ГБ", 26, 40}, {"512 ГБ", 38, 50}};
+const Opt STAB_OPT[4] = {{"Нет", 0, 0}, {"Электронная", 6, 14}, {"Оптическая", 14, 28}, {"Оптическая + ИИ", 22, 38}};
+const Opt FRONT_OPT[5] = {{"Нет", 0, 0}, {"0.3 Мп", 4, 8}, {"2 Мп", 8, 16}, {"8 Мп", 12, 26}, {"32 Мп", 18, 36}};
+const Opt CELL_OPT[6] = {{"Нет", 0, 0}, {"1G (аналоговая)", 10, 10}, {"2G GSM", 14, 18}, {"3G", 20, 28},
+                         {"4G LTE", 26, 38}, {"5G", 36, 48}};
+const Opt SIM_OPT[4] = {{"Нет", 0, 0}, {"1 SIM", 2, 8}, {"2 SIM", 4, 18}, {"2 SIM + eSIM", 7, 28}};
+const Opt WIFI_OPT[6] = {{"Нет", 0, 0}, {"Wi-Fi 802.11b", 5, 10}, {"Wi-Fi 4", 8, 18}, {"Wi-Fi 5", 12, 26},
+                         {"Wi-Fi 6", 16, 36}, {"Wi-Fi 7", 22, 44}};
+const Opt BT_OPT[6] = {{"Нет", 0, 0}, {"Bluetooth 1.1", 4, 8}, {"Bluetooth 2.1", 6, 14}, {"Bluetooth 4.0", 8, 22},
+                       {"Bluetooth 5.0", 11, 32}, {"Bluetooth 6.0", 15, 40}};
+const Opt NFC_OPT[3] = {{"Нет", 0, 0}, {"NFC", 5, 16}, {"NFC с оплатой", 9, 30}};
+const Opt GPS_OPT[4] = {{"Нет", 0, 0}, {"GPS", 6, 12}, {"GPS + ГЛОНАСС", 9, 22}, {"Двухчастотная", 14, 32}};
+const Opt IR_OPT[2] = {{"Нет", 0, 0}, {"ИК-порт", 2, 12}};
+const Opt ANC_OPT[4] = {{"Нет", 0, 0}, {"Шумовой фильтр", 3, 8}, {"Активное", 10, 20}, {"Адаптивное", 18, 32}};
+const Opt FAST_OPT[5] = {{"Нет", 0, 0}, {"18 Вт", 4, 10}, {"33 Вт", 8, 20}, {"80 Вт", 14, 30}, {"120 Вт", 20, 40}};
+const Opt WLESS_OPT[4] = {{"Нет", 0, 0}, {"5 Вт", 6, 10}, {"15 Вт", 10, 20}, {"50 Вт, реверсивная", 18, 32}};
+const Opt CHG_OPT[3] = {{"Нет в комплекте", 0, 0}, {"Простое зарядное", 3, 10}, {"Быстрое зарядное", 8, 22}};
+const Opt BIO_OPT[5] = {{"Нет", 0, 0}, {"Сканер отпечатка", 6, 12}, {"Распознавание лица", 10, 22},
+                        {"Сканер в экране", 14, 30}, {"Ультразвуковой + лицо", 20, 40}};
+const Opt SENS_OPT[5] = {{"Нет", 0, 0}, {"Акселерометр", 3, 8}, {"Гироскоп и компас", 6, 18},
+                         {"Пульс и шагомер", 10, 28}, {"Полный набор", 16, 38}};
+struct OptTab { const Opt* o; int n; };
+const OptTab NEW_OPT[NPARAM - P_MAT] = {
+    {MAT_OPT, 5}, {IP_OPT, 6}, {HZ_OPT, 5}, {GLASS_OPT, 5}, {RAM_OPT, 7}, {ROM_OPT, 7}, {STAB_OPT, 4},
+    {FRONT_OPT, 5}, {CELL_OPT, 6}, {SIM_OPT, 4}, {WIFI_OPT, 6}, {BT_OPT, 6}, {NFC_OPT, 3}, {GPS_OPT, 4},
+    {IR_OPT, 2}, {ANC_OPT, 4}, {FAST_OPT, 5}, {WLESS_OPT, 4}, {CHG_OPT, 3}, {BIO_OPT, 5}, {SENS_OPT, 5}};
+
 int optCount(int p) {
+    if (p >= P_MAT) return NEW_OPT[p - P_MAT].n;
     switch (p) {
         case P_SIZE: return 4;
         case P_COLOR: return 8;
@@ -1198,6 +1246,7 @@ int optCount(int p) {
     }
 }
 const Opt& opt(int p, int i) {
+    if (p >= P_MAT) return NEW_OPT[p - P_MAT].o[i];
     switch (p) {
         case P_SIZE: return SIZE_OPT[i];
         case P_COLOR: return COLOR_OPT[i];
@@ -1217,13 +1266,18 @@ const Opt& opt(int p, int i) {
 struct Cat { const char* name; const char* series; double costMult; double demand; int idealSize; int defPrice; int devDays; double w[NPARAM]; };
 const int NCAT = 5;
 const Cat CATS[NCAT] = {
-    {"Радиоприёмник", "Радио", 0.8, 50, 1, 45, 16, {0.8, 0.6, 0.0, 0.8, 1.0, 2.0, 0.5, 0, 0, 0, 0, 0.8}},
-    {"Телефон", "Тел", 1.2, 40, 1, 79, 20, {1.0, 0.7, 1.5, 1.5, 1.2, 0.8, 0.5, 0.8, 1.2, 0.8, 1.5, 1.5}},
-    {"Наручные часы", "Часы", 1.0, 28, 0, 120, 16, {1.0, 1.0, 1.2, 0.8, 1.5, 0.3, 0.5, 0, 0, 0, 0.4, 0.8}},
-    {"Калькулятор", "Калк", 1.5, 20, 1, 150, 20, {0.8, 0.5, 1.0, 1.2, 1.0, 0.0, 0.5, 0, 0, 0, 0, 1.2}},
-    {"Компьютер", "ЭВМ", 4.0, 14, 2, 1500, 30, {0.9, 0.5, 1.4, 2.0, 1.4, 0.7, 0.5, 0.6, 0.6, 0.5, 2.0, 2.0}},
+    {"Радиоприёмник", "Radio", 0.8, 50, 1, 45, 16, {0.8, 0.6, 0.0, 0.8, 1.0, 2.0, 0.5, 0, 0, 0, 0, 0.8,
+      0.5, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.6, 0, 0, 0, 0.4, 0, 0, 0.3, 0, 0}},
+    {"Телефон", "Phone", 1.2, 40, 1, 79, 20, {1.0, 0.7, 1.5, 1.5, 1.2, 0.8, 0.5, 0.8, 1.2, 0.8, 1.5, 1.5,
+      0.6, 0.5, 0.6, 0.5, 1.0, 1.0, 0.5, 0.6, 1.5, 0.4, 0.8, 0.6, 0.4, 0.5, 0.2, 0.3, 0.6, 0.4, 0.4, 0.6, 0.4}},
+    {"Наручные часы", "Watch", 1.0, 28, 0, 120, 16, {1.0, 1.0, 1.2, 0.8, 1.5, 0.3, 0.5, 0, 0, 0, 0.4, 0.8,
+      1.0, 1.0, 0.3, 0.8, 0.3, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.8, 0.5, 0.6, 0, 0, 0.3, 0.5, 0.3, 0, 1.0}},
+    {"Калькулятор", "Calc", 1.5, 20, 1, 150, 20, {0.8, 0.5, 1.0, 1.2, 1.0, 0.0, 0.5, 0, 0, 0, 0, 1.2,
+      0.4, 0, 0, 0.2, 0.3, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0}},
+    {"Компьютер", "PC", 4.0, 14, 2, 1500, 30, {0.9, 0.5, 1.4, 2.0, 1.4, 0.7, 0.5, 0.6, 0.6, 0.5, 2.0, 2.0,
+      0.4, 0, 0.5, 0.2, 1.5, 1.5, 0, 0.4, 0.2, 0, 1.0, 0.4, 0, 0, 0.2, 0, 0.3, 0, 0.3, 0.4, 0}},
 };
-const char* SUFFIX[10] = {"Альфа", "Бета", "Гамма", "Дельта", "Эпсилон", "Омега", "Супер", "Мини", "Модель 1", "Модель 2"};
+const char* SUFFIX[10] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Omega", "Super", "Mini", "Max", "Pro"};
 
 // wealth — достаток покупателей, tariff — пошлина с выручки, year — с какого года рынок доступен,
 // pref — вкусы по категориям (радио, телефон, часы, калькулятор, компьютер)
@@ -1279,15 +1333,15 @@ const char* INITIALS[12] = {"А.", "Б.", "В.", "Г.", "Д.", "К.", "Л.", "М
 
 const int NCOMP = 20;
 const char* COMP_NAMES[NCOMP] = {
-    "Грушафон", "СуперЛаб", "Восток-Электро", "НеоТек", "ПиксельКо", "Альфа-Радио", "Звёздный Ток",
-    "ТрансКонтур", "Северный Вектор", "Кварц-Плюс", "Орбита", "Ритм-Тех", "Светозар", "Глобал-Чип",
-    "Меридиан", "Электрон-Пром", "Дельта-Лаб", "Ампер", "Зенит-Электро", "Сигма-Тек"};
+    "Pearfone", "SuperLab", "Vostok Electro", "NeoTek", "PixelCo", "Alpha Radio", "StarVolt",
+    "TransContour", "North Vector", "Quartz Plus", "Orbita", "RhythmTech", "Svetozar", "GlobalChip",
+    "Meridian", "ElectronProm", "Delta Lab", "Ampere", "Zenith Electro", "SigmaTek"};
 const char* MONTHS[12] = {"Январь", "Февраль", "Март",     "Апрель",  "Май",    "Июнь",
                           "Июль",   "Август",  "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"};
 const char* MONTHS_S[12] = {"Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"};
 const char* OUTLETS[4] = {"ТехноОбзор", "Гаджет-Мир", "Цифра", "Девайс-Ревью"};
-const char* COMPANY_NAMES[10] = {"Нова", "Кварц", "Ионика", "ТехноЛис", "Вектор",
-                                 "Альфа-Девайс", "Спектр", "Орбита", "Микрон", "Гелиос"};
+const char* COMPANY_NAMES[10] = {"Nova", "Quartz", "Ionica", "TechnoFox", "Vector",
+                                 "Alpha Device", "Spectra", "Orbitron", "Mikra", "Helios"};
 
 // Исследования
 struct Tech { std::string name; int kind; int a; int b; double cost; int prereq; int year = 0; };
@@ -1309,6 +1363,27 @@ const int PARAM_YEAR[NPARAM][8] = {
     {0, 2003, 2014, 2019, 0, 0, 0, 0},         // камеры: размер сенсора
     {0, 0, 1971, 1981, 1985, 2000, 2008, 0},   // ОС: своя и лицензии
     {0, 0, 1978, 1985, 2007, 2017, 0, 0},      // источник ЦП: свой и лицензии
+    {0, 1960, 1970, 2010, 2019, 0, 0, 0},      // материал корпуса
+    {0, 1965, 1995, 2013, 2016, 2024, 0, 0},   // влагозащита
+    {0, 2019, 2020, 2021, 2024, 0, 0, 0},      // частота экрана
+    {0, 1965, 1994, 2007, 2020, 0, 0, 0},      // стекло экрана
+    {0, 1975, 1982, 1991, 2002, 2013, 2021, 0},// оперативная память
+    {0, 1977, 1984, 1996, 2005, 2013, 2021, 0},// накопитель
+    {0, 2005, 2012, 2021, 0, 0, 0, 0},         // стабилизация камеры
+    {0, 2003, 2010, 2015, 2019, 0, 0, 0},      // фронтальная камера
+    {0, 1983, 1991, 2001, 2010, 2019, 0, 0},   // сотовая связь
+    {0, 1991, 2008, 2018, 0, 0, 0, 0},         // SIM-карты
+    {0, 1999, 2009, 2013, 2019, 2024, 0, 0},   // Wi-Fi
+    {0, 2001, 2007, 2011, 2017, 2024, 0, 0},   // Bluetooth
+    {0, 2011, 2015, 0, 0, 0, 0, 0},            // NFC
+    {0, 2000, 2011, 2018, 0, 0, 0, 0},         // навигация
+    {0, 1995, 0, 0, 0, 0, 0, 0},               // ИК-порт
+    {0, 1975, 2000, 2019, 0, 0, 0, 0},         // шумоподавление
+    {0, 2013, 2018, 2021, 2022, 0, 0, 0},      // быстрая зарядка
+    {0, 2012, 2018, 2021, 0, 0, 0, 0},         // беспроводная зарядка
+    {0, 1965, 2014, 0, 0, 0, 0, 0},            // зарядное в комплекте
+    {0, 2013, 2017, 2018, 2021, 0, 0, 0},      // биометрия
+    {0, 2007, 2010, 2014, 2020, 0, 0, 0},      // датчики
 };
 
 void buildTechs() {
@@ -1416,7 +1491,7 @@ struct Award { std::string title, winner, detail; int year = 0; int owner = -1; 
 struct Suit { bool active = false; int rival = 0; double claim = 0; int reason = 0; };
 
 struct Game {
-    std::string company = "Девайс-Корп";
+    std::string company = "Device Corp";
     double money = 150000, rep = 5, fans = 0;
     int day = 0, speed = 1, office = 0;
     std::vector<Staff> staff, cand;
@@ -1459,6 +1534,7 @@ struct Game {
     std::vector<RProd> rivals;
     int home = 0;                     // регион производства (индекс в REGS)
     int goal = 0;                     // номер текущей цели
+    int osLic = 0;                    // купленные лицензии на ОС (бит = номер варианта)
     float goalFlash = 0;              // подсветка карточки после выполнения (не сохраняется)
 };
 Game G;
@@ -1551,7 +1627,11 @@ void logMsg(const std::string& s) {
 bool techDone(int i) { return i >= 0 && i < (int)G.techDone.size() && G.techDone[(size_t)i]; }
 // Разработка своей платформы по этапам
 struct PO { const char* n; double cost; int days; int q; };
-struct Proj { int st = 0; int pick = -1; double prog = 0; int q = 0; };  // st: 0..2 этапы, 3 — готово
+// st: 0..2 этапы, 3 — готово; ver — версия; up — идёт разработка следующей версии
+struct Proj { int st = 0; int pick = -1; double prog = 0; int q = 0; int ver = 1; int up = 0; };
+const int PROJ_MAXVER = 9;
+const int PROJ_UPQ = 6;  // прибавка качества за версию
+int upDays(const Proj& pr) { return 30 + 15 * pr.ver; }
 Proj PRJ_CPU, PRJ_OS;
 const PO CPU_STAGES[3][3] = {
     {{"RISC-подобная", 20000, 30, 4}, {"CISC-подобная", 15000, 40, 3}, {"Сверхскалярная", 45000, 60, 7}},
@@ -1570,7 +1650,7 @@ bool tierUnlocked(int p, int t) {
     if (p == P_OS) {
         if (t == 0) return true;
         if (t == 1) return PRJ_OS.st == 3;
-        return calYear() >= PARAM_YEAR[p][t];
+        return calYear() >= PARAM_YEAR[p][t] && ((G.osLic >> t) & 1);  // лицензию нужно купить
     }
     if (p == P_CPUSRC) {
         if (t == 0) return true;
@@ -1578,8 +1658,11 @@ bool tierUnlocked(int p, int t) {
         return calYear() >= PARAM_YEAR[p][t];
     }
     if (t == 0) return true;
+    if (p >= P_MAT) return calYear() >= PARAM_YEAR[p][t];  // покупные компоненты: доступны с года появления
     return techDone(techFor[p][t]);
 }
+// Новая характеристика учитывается в оценке только с года, когда она появилась на рынке
+bool paramLive(int p, int year) { return p < P_MAT || year >= PARAM_YEAR[p][1]; }
 bool catUnlocked(int c) { return c < 2 || techDone(techCat[c]); }
 int countKind(int kind) {
     int n = 0;
@@ -1621,7 +1704,7 @@ double eraQuality(int year) {
         double sw = 0, sq = 0;
         for (int p = 0; p < NPARAM; ++p) {
             double w = cat.w[p];
-            if (w <= 0) continue;
+            if (w <= 0 || !paramLive(p, year)) continue;
             double q = 0;
             if (p == P_SIZE) {
                 q = 20;
@@ -1666,13 +1749,14 @@ double draftQuality(const Draft& d) {
     double sw = 0, sq = 0;
     for (int p = 0; p < NPARAM; ++p) {
         double w = c.w[p];
-        if (w <= 0) continue;
+        if (w <= 0 || !paramLive(p, calYear())) continue;
         double q, b;
         if (p == P_SIZE) { q = std::max(0.0, 20.0 - 9.0 * std::abs(d.p[p] - c.idealSize)); b = bD; }
         else if (p == P_COLOR) { q = COLOR_OPT[d.p[p]].q + (d.p[p] == G.trend ? 10.0 : 0.0); b = bD; }
         else {
             q = opt(p, d.p[p]).q;
-            b = (p == P_PACK) ? bD : ((p == P_CPU || p == P_SCREEN) ? bP : bE);
+            b = (p == P_PACK || p == P_MAT) ? bD : ((p == P_CPU || p == P_SCREEN || p == P_RAM || p == P_ROM) ? bP : bE);
+            if (p >= P_MAT && q <= 0) b = 0;  // функции нет — команда её не вытянет
         }
         sw += w; sq += w * (q + b);
     }
@@ -1681,8 +1765,9 @@ double draftQuality(const Draft& d) {
 double scoreFromQ(double q) { return clampd(10.0 * (1.0 - std::exp(-0.9 * q / expectation())), 1.0, 10.0); }
 double fairPrice(double unitCost, double rating) { return unitCost * (1.25 + 0.08 * rating); }
 double draftDevTotal(const Draft& d) {
-    int sum = 0;
-    for (int p = P_SCREEN; p < NPARAM; ++p) sum += d.p[p];
+    double sum = 0;
+    for (int p = P_SCREEN; p < P_MAT; ++p) sum += d.p[p];
+    for (int p = P_MAT; p < NPARAM; ++p) if (CATS[d.cat].w[p] > 0) sum += 0.3 * d.p[p];  // готовые модули проще встроить
     return CATS[d.cat].devDays * (1.0 + 0.12 * sum);
 }
 double toolingCost(const Draft& d) { return draftUnitCost(d) * 150.0 * std::sqrt(marketSize()) + std::round(5000.0 * G.infl); }
@@ -1698,6 +1783,7 @@ void fixDraft(Draft& d) {
         while (d.p[p] > 0 && !tierUnlocked(p, d.p[p])) --d.p[p];
     }
     if (CATS[d.cat].w[P_SCREEN] <= 0) d.p[P_SCREEN] = 0;
+    for (int p = P_MAT; p < NPARAM; ++p) if (CATS[d.cat].w[p] <= 0) d.p[p] = 0;  // лишнее в этой категории не ставится
 }
 
 Staff genCandidate() {
@@ -2037,7 +2123,7 @@ void newGame(const std::string& name, int capIdx, int home = 0) {
     for (int i = 0; i < NCOMP; ++i) G.comp[i] = 900.0 * std::pow(0.85, i) * (0.9 + 0.2 * frand());
     OS_OPT[1].q = 0;
     CPUSRC_OPT[1].q = 0;
-    G.company = name.empty() ? "Девайс-Корп" : name;
+    G.company = name.empty() ? "Device Corp" : name;
     const double caps[3] = {500000, 150000, 50000};
     G.money = caps[clampi(capIdx, 0, 2)];
     G.rep = (capIdx == 2 ? 0 : 5) + REGS[G.home].rep;
@@ -2433,7 +2519,22 @@ void announceYear(int y) {
 }
 
 void advanceProj(Proj& pr, const PO (&st)[3][3], Opt& own, const char* const* names, const char* what) {
-    if (pr.st >= 3 || pr.pick < 0) return;
+    if (pr.st >= 3) {
+        // новая версия готовой платформы
+        if (!pr.up) return;
+        pr.prog += devSpeed();
+        if (pr.prog < upDays(pr)) return;
+        pr.up = 0;
+        pr.prog = 0;
+        pr.ver++;
+        pr.q += PROJ_UPQ;
+        own.q = pr.q;
+        logMsg(std::string(what) + ": вышла версия " + std::to_string(pr.ver) + ". Качество: " + std::to_string(pr.q));
+        toast(std::string(what) + ": версия " + std::to_string(pr.ver) + " готова!");
+        sfx(SFX_DONE);
+        return;
+    }
+    if (pr.pick < 0) return;
     pr.prog += devSpeed();
     const PO& o = st[pr.st][pr.pick];
     if (pr.prog < o.days) return;
@@ -2665,7 +2766,7 @@ bool saveGame() {
     if (savePath.empty()) return false;
     std::ostringstream o;
     o.precision(17);
-    o << "DEVCORP5";
+    o << "DEVCORP7";
     wstr(o, G.company);
     o << G.money << ' ' << G.rep << ' ' << G.fans << ' ' << G.day << ' ' << G.speed << ' ' << G.office << ' '
       << G.hype << ' ' << G.trend << ' ' << G.negMonths << ' ' << G.monInc << ' ' << G.monExp << ' '
@@ -2723,12 +2824,12 @@ bool saveGame() {
       << G.suit.rival << ' ' << G.suit.claim << ' ' << G.suit.reason << '\n';
     const Proj* prs[2] = {&PRJ_CPU, &PRJ_OS};
     for (int k = 0; k < 2; ++k)
-        o << prs[k]->st << ' ' << prs[k]->pick << ' ' << prs[k]->prog << ' ' << prs[k]->q << ' ';
+        o << prs[k]->st << ' ' << prs[k]->pick << ' ' << prs[k]->prog << ' ' << prs[k]->q << ' ' << prs[k]->ver << ' ' << prs[k]->up << ' ';
     o << '\n';
     // ---- Блок версии 3: склад, брак, финансы, снабжение, слоты, конкуренты
     o << G.infl << ' ' << G.lastInfl << ' ' << G.loan << ' ' << G.stake << ' ' << (G.ipo ? 1 : 0) << ' ' << G.lastTax
       << ' ' << G.lastDiv << ' ' << G.supplier << ' ' << G.supUntil << ' ' << G.supHalt << ' ' << G.prodToday << ' '
-      << (G.crunch ? 1 : 0) << ' ' << (G.ussrSplit ? 1 : 0) << ' ' << (G.slot[0].crunch ? 1 : 0) << ' ' << G.home << ' ' << G.goal << '\n';
+      << (G.crunch ? 1 : 0) << ' ' << (G.ussrSplit ? 1 : 0) << ' ' << (G.slot[0].crunch ? 1 : 0) << ' ' << G.home << ' ' << G.goal << ' ' << G.osLic << '\n';
     for (int l = 0; l < 2; ++l)
         for (size_t i = 0; i < lists[l]->size(); ++i) o << (*lists[l])[i].xp << ' ' << (*lists[l])[i].ask << ' ';
     o << '\n';
@@ -2772,7 +2873,10 @@ bool loadGame() {
     std::istringstream is(data);
     std::string magic;
     is >> magic;
-    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5") return false;  // старые сохранения тоже читаются
+    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5" && magic != "DEVCORP6" && magic != "DEVCORP7") return false;
+    const bool v3 = magic != "DEVCORP2", v4 = v3 && magic != "DEVCORP3", v5 = v4 && magic != "DEVCORP4",
+               v6 = v5 && magic != "DEVCORP5", v7 = v6 && magic != "DEVCORP6";
+    const int npar = v6 ? NPARAM : NPARAM_OLD;  // в старых файлах параметров меньше  // старые сохранения тоже читаются
     Game g;
     float vol = A.vol;
     if (!rstr(is, g.company)) return false;
@@ -2803,7 +2907,7 @@ bool loadGame() {
     Draft* ds[2] = {&g.draft, &g.slot[0].d};
     for (int k = 0; k < 2; ++k) {
         is >> ds[k]->cat >> ds[k]->price >> ds[k]->suffix;
-        for (int p = 0; p < NPARAM; ++p) is >> ds[k]->p[p];
+        for (int p = 0; p < npar; ++p) is >> ds[k]->p[p];
         ds[k]->cat = clampi(ds[k]->cat, 0, NCAT - 1);
         ds[k]->suffix = clampi(ds[k]->suffix, 0, 9);
         for (int p = 0; p < NPARAM; ++p) ds[k]->p[p] = clampi(ds[k]->p[p], 0, optCount(p) - 1);
@@ -2831,7 +2935,7 @@ bool loadGame() {
         p.onSale = onSale != 0;
         p.cat = clampi(p.cat, 0, NCAT - 1);
         p.pres = clampi(p.pres, 0, 3);
-        for (int k = 0; k < NPARAM; ++k) { is >> p.p[k]; p.p[k] = clampi(p.p[k], 0, optCount(k) - 1); }
+        for (int k = 0; k < npar; ++k) { is >> p.p[k]; p.p[k] = clampi(p.p[k], 0, optCount(k) - 1); }
         size_t nw = 0;
         is >> nw;
         if (!is || nw > 10000) return false;
@@ -2861,14 +2965,18 @@ bool loadGame() {
         g.pendEv >> sa >> g.suit.rival >> g.suit.claim >> g.suit.reason;
     g.suit.active = sa != 0;
     Proj lp[2];
-    for (int k = 0; k < 2; ++k) is >> lp[k].st >> lp[k].pick >> lp[k].prog >> lp[k].q;
+    for (int k = 0; k < 2; ++k) {
+        is >> lp[k].st >> lp[k].pick >> lp[k].prog >> lp[k].q;
+        if (v7) is >> lp[k].ver >> lp[k].up;
+    }
     if (!is) return false;
-    if (magic == "DEVCORP3" || magic == "DEVCORP4" || magic == "DEVCORP5") {
+    if (v3) {
         int ipo = 0, crunch = 0, split = 0, c0 = 0;
         is >> g.infl >> g.lastInfl >> g.loan >> g.stake >> ipo >> g.lastTax >> g.lastDiv >> g.supplier >> g.supUntil >>
             g.supHalt >> g.prodToday >> crunch >> split >> c0;
-        if (magic == "DEVCORP4" || magic == "DEVCORP5") { is >> g.home; g.home = clampi(g.home, 0, NREG - 1); }
-        if (magic == "DEVCORP5") { is >> g.goal; g.goal = clampi(g.goal, 0, NGOAL); }
+        if (v4) { is >> g.home; g.home = clampi(g.home, 0, NREG - 1); }
+        if (v5) { is >> g.goal; g.goal = clampi(g.goal, 0, NGOAL); }
+        if (v7) is >> g.osLic;
         g.ipo = ipo != 0; g.crunch = crunch != 0; g.ussrSplit = split != 0; g.slot[0].crunch = c0 != 0;
         for (int l = 0; l < 2; ++l)
             for (size_t i = 0; i < lists[l]->size(); ++i) is >> (*lists[l])[i].xp >> (*lists[l])[i].ask;
@@ -2889,7 +2997,7 @@ bool loadGame() {
             DevSlot& sl = g.slot[k];
             int a = 0, r = 0, c = 0;
             is >> a >> r >> c >> sl.prog >> sl.total >> sl.d.cat >> sl.d.price >> sl.d.suffix;
-            for (int q = 0; q < NPARAM; ++q) { is >> sl.d.p[q]; sl.d.p[q] = clampi(sl.d.p[q], 0, optCount(q) - 1); }
+            for (int q = 0; q < npar; ++q) { is >> sl.d.p[q]; sl.d.p[q] = clampi(sl.d.p[q], 0, optCount(q) - 1); }
             sl.active = a != 0; sl.ready = r != 0; sl.crunch = c != 0;
             sl.d.cat = clampi(sl.d.cat, 0, NCAT - 1);
             sl.d.suffix = clampi(sl.d.suffix, 0, 9);
@@ -2921,7 +3029,12 @@ bool loadGame() {
     }
     if (g.slot[0].total < 1) g.slot[0].total = 1;
     if (!g.slot[0].active) g.slot[0].name.clear();
-    for (int k = 0; k < 2; ++k) { lp[k].st = clampi(lp[k].st, 0, 3); lp[k].pick = clampi(lp[k].pick, -1, 2); }
+    for (int k = 0; k < 2; ++k) {
+        lp[k].st = clampi(lp[k].st, 0, 3);
+        lp[k].pick = clampi(lp[k].pick, -1, 2);
+        lp[k].ver = clampi(lp[k].ver, 1, PROJ_MAXVER);
+        lp[k].up = (lp[k].up && lp[k].st == 3 && lp[k].ver < PROJ_MAXVER) ? 1 : 0;
+    }
     g.factory = clampi(g.factory, 0, NFACT - 1);
     g.capFactor = clampd(g.capFactor, 0.01, 1.0);
     if (g.evActive < 0 || g.evActive >= NEV + 3) g.evActive = -1;
@@ -2934,7 +3047,10 @@ bool loadGame() {
     if (g.researching >= (int)TECHS.size()) g.researching = -1;
     G = g;
     // В сохранениях прежних версий целей не было: уже достигнутое засчитывается без премии
-    if (magic != "DEVCORP5") { G.goal = 0; while (G.goal < NGOAL && goalMet(G.goal)) G.goal++; }
+    // До версии 7 лицензии были бесплатными: всё, что уже вышло к году сохранения, считается купленным
+    if (!v7) { G.osLic = 0; for (int t = 2; t < 7; ++t) if (calYear() >= PARAM_YEAR[P_OS][t]) G.osLic |= 1 << t; }
+    G.osLic &= 0x7C;
+    if (!v5) { G.goal = 0; while (G.goal < NGOAL && goalMet(G.goal)) G.goal++; }
     shownMoney = G.money;
     parts.clear();
     PRJ_CPU = lp[0];
@@ -3039,6 +3155,9 @@ void drawDevice(int cx, int cy, int cat, int size, int color, int scrTier, int c
 // Пока у компании нет ни одного устройства, нужно создать первое в конструкторе
 bool mustDesignFirst() { return G.products.empty() && !anyDev(); }
 
+// Куда вернуться из паузы: только на обычный игровой экран
+Screen pauseRet() { return (retScreen == SC_PAUSE || retScreen == SC_NEW || retScreen == SC_OVER) ? SC_MAIN : retScreen; }
+
 void goBack() {
     if (textActive) { textActive = false; SDL_StopTextInput(); return; }
     if (screen == SC_DESIGN && mustDesignFirst()) { toast("Сначала создайте первое устройство"); sfx(SFX_ERR); return; }
@@ -3049,8 +3168,8 @@ void goBack() {
             break;
         case SC_OVER: return;
         case SC_MAIN: setScreen(SC_PAUSE); break;
-        case SC_PAUSE: setScreen(retScreen); break;
-        case SC_PLATFORM: setScreen(retScreen); break;
+        case SC_PAUSE: setScreen(pauseRet()); break;
+        case SC_PLATFORM: setScreen(SC_DESIGN); break;
         case SC_AWARDS: case SC_HALL: setScreen(SC_MAIN); break;
         case SC_ADS: setScreen(SC_LAUNCH); break;
         case SC_FACTORY: case SC_PATENT: case SC_BANK: setScreen(SC_MAIN); break;
@@ -3358,6 +3477,47 @@ void drawIcon(int kind, int cx, int cy, int S, Col c) {
             for (int r = 0; r < 3; ++r)
                 for (int q = 0; q < 3; ++q) R2(10 + q * 8, 10 + r * 8, 5, 5, 0, scrC);
             break;
+        case 40:  // сеть: столбики сигнала
+            for (int i = 0; i < 4; ++i) R2(5 + i * 8, 28 - i * 7, 6, 8 + i * 7, 1, i < 3 ? c : d);
+            break;
+        case 41:  // беспроводная связь: волны
+            R2(5, 8, 30, 4, 2, c);
+            R2(10, 16, 20, 4, 2, c);
+            R2(15, 24, 10, 4, 2, c);
+            CI(20, 33, 3, c);
+            break;
+        case 42:  // зарядка: молния
+            R2(19, 3, 10, 14, 1, c);
+            R2(10, 15, 20, 6, 1, c);
+            R2(11, 19, 10, 18, 1, c);
+            break;
+        case 43:  // защита: щит
+            R2(7, 4, 26, 20, 4, c);
+            R2(11, 20, 18, 10, 6, c);
+            R2(16, 28, 8, 8, 3, c);
+            R2(13, 9, 14, 12, 2, scrC);
+            break;
+        case 44:  // память: планка
+            R2(3, 10, 34, 18, 2, c);
+            for (int i = 0; i < 5; ++i) R2(6 + i * 6, 28, 3, 5, 0, d);
+            for (int i = 0; i < 3; ++i) R2(7 + i * 9, 14, 6, 9, 1, scrC);
+            break;
+        case 45:  // биометрия: отпечаток
+            CI(20, 20, 16, c);
+            CI(20, 20, 11, d);
+            CI(20, 20, 6, c);
+            CI(20, 20, 2, d);
+            break;
+        case 46:  // материал: слои
+            R2(5, 7, 30, 7, 2, c);
+            R2(5, 17, 30, 7, 2, d);
+            R2(5, 27, 30, 7, 2, c);
+            break;
+        case 47:  // датчики и навигация: метка
+            CI(20, 16, 12, c);
+            CI(20, 16, 5, scrC);
+            R2(17, 24, 6, 12, 3, c);
+            break;
         case 17:  // цена
             R2(4, 10, 32, 20, 4, c);
             CI(12, 20, 3, scrC);
@@ -3389,6 +3549,29 @@ bool iconTile(SDL_Rect r, int kind, const std::string& label, bool enabled, bool
     return hit;
 }
 
+// Разделы конструктора: какие параметры в каком разделе (-1 — конец списка)
+struct Sec { const char* name; int p[8]; };
+const int NSEC = 10;
+const Sec SECS[NSEC] = {
+    {"Корпус", {P_SIZE, P_COLOR, P_MAT, P_IP, -1, -1, -1, -1}},
+    {"Экран", {P_SCREEN, P_HZ, P_GLASS, -1, -1, -1, -1, -1}},
+    {"Платформа", {P_CPU, P_CPUSRC, P_OS, -1, -1, -1, -1, -1}},
+    {"Память", {P_RAM, P_ROM, -1, -1, -1, -1, -1, -1}},
+    {"Камеры", {P_CAMN, P_CAMRES, P_CAMSZ, P_STAB, P_FRONT, -1, -1, -1}},
+    {"Связь", {P_CELL, P_SIM, P_WIFI, P_BT, P_NFC, P_GPS, P_IR, -1}},
+    {"Звук", {P_SPK, P_ANC, -1, -1, -1, -1, -1, -1}},
+    {"Питание", {P_BATT, P_FAST, P_WLESS, P_CHG, -1, -1, -1, -1}},
+    {"Функции", {P_BIO, P_SENS, -1, -1, -1, -1, -1, -1}},
+    {"Продажа", {P_PACK, -1, -1, -1, -1, -1, -1, -1}},
+};
+int designSec = 0;
+int paramIcon(int p) {
+    if (p < 7) return 10 + p;
+    if (p < P_MAT) return 23 + p;
+    static const int ic[NPARAM - P_MAT] = {46, 43, 12, 43, 44, 44, 31, 30, 40, 40, 41, 41, 41, 47, 41, 15, 42, 42, 42, 45, 47};
+    return ic[p - P_MAT];
+}
+
 void scrDesign() {
     Draft& d = G.draft;
 
@@ -3406,29 +3589,48 @@ void scrDesign() {
         }
     }
 
-    // Список параметров: иконка, название, управление, сегменты
+    // Разделы характеристик, как в карточке товара
     const Cat& cat = CATS[d.cat];
-    SDL_Rect view = {524, 138, 740, 574};
+    const int year = calYear();
+    designSec = clampi(designSec, 0, NSEC - 1);
+    for (int i = 0; i < NSEC; ++i) {
+        bool any = i == NSEC - 1;
+        for (int k = 0; k < 8 && SECS[i].p[k] >= 0; ++k) if (cat.w[SECS[i].p[k]] > 0) any = true;
+        SDL_Rect tr = {524 + (i % 5) * 148, 134 + (i / 5) * 52, 144, 48};
+        if (button(tr, SECS[i].name, any, designSec == i) && designSec != i) {
+            designSec = i;
+            U.scroll[0] = 0;
+        }
+    }
+    // Строки выбранного раздела: параметр >= 0, -1 — цена, -2 — название
+    int rowId[10], rows = 0;
+    for (int k = 0; k < 8 && SECS[designSec].p[k] >= 0; ++k)
+        if (cat.w[SECS[designSec].p[k]] > 0) rowId[rows++] = SECS[designSec].p[k];
+    if (designSec == NSEC - 1) { rowId[rows++] = -1; rowId[rows++] = -2; }
+    SDL_Rect view = {524, 242, 740, 470};
     beginArea(0, view);
     int sy = scr(0);
-    int rows = NPARAM + 2;
+    if (rows == 0) drawText("В этой категории раздел не используется", view.x + 16, view.y + 24, 2, C_DIM);
     for (int i = 0; i < rows; ++i) {
         int ry = view.y + i * 72 - sy;
         SDL_Rect row = {view.x, ry, view.w - 8, 64};
         fillRect(row, C_PANEL);
         drawRect(row, C_BORDER);
-        if (i < NPARAM) {
-            int p = i;
-            drawIcon(p < 7 ? 10 + p : 23 + p, row.x + 30, ry + 32, 40, C_ACC);
+        if (rowId[i] >= 0) {
+            int p = rowId[i];
+            drawIcon(paramIcon(p), row.x + 30, ry + 32, 40, C_ACC);
             drawText(PARAM_NAMES[p], row.x + 60, ry + 25, 2, C_TEXT);
-            if (cat.w[p] <= 0) {
-                drawText("Не используется в этой категории", row.x + 232, ry + 25, 2, C_DIM);
+            if (!paramLive(p, year)) {
+                drawText("Появится на рынке в " + std::to_string(PARAM_YEAR[p][1]) + " году", row.x + 232, ry + 25, 2, C_DIM);
                 continue;
             }
             int n = optCount(p);
             bool allowed[8];
             for (int k = 0; k < n; ++k) allowed[k] = tierUnlocked(p, k);
-            if (button({row.x + 170, ry + 6, 52, 52}, "-", d.p[p] > 0)) d.p[p]--;
+            int dn = d.p[p] - 1, up = d.p[p] + 1;
+            while (dn > 0 && !allowed[dn]) --dn;      // вариант 0 доступен всегда
+            while (up < n && !allowed[up]) ++up;
+            if (button({row.x + 170, ry + 6, 52, 52}, "-", d.p[p] > 0)) d.p[p] = std::max(0, dn);
             SDL_Rect sl = {row.x + 232, ry + 6, 370, 52};
             slider(sl, n, d.p[p], allowed);
             fillRect(sl, C_PANEL2);
@@ -3444,13 +3646,29 @@ void scrDesign() {
                 if (k == d.p[p]) drawRect({sg.x - 2, sg.y - 2, sg.w + 4, sg.h + 4}, C_TEXT, 2);
                 if (p == P_COLOR && k == G.trend) drawText("*", sg.x + sg.w / 2 - 5, sg.y + 2, 2, C_YEL);
             }
-            bool canUp = d.p[p] < n - 1 && allowed[d.p[p] + 1];
-            if (button({row.x + 618, ry + 6, 52, 52}, "+", canUp)) d.p[p]++;
+            if (button({row.x + 618, ry + 6, 52, 52}, "+", d.p[p] < n - 1)) {
+                if (up < n) {
+                    d.p[p] = up;
+                } else {
+                    // объясняем, почему следующий вариант закрыт
+                    int k = d.p[p] + 1;
+                    bool byYear = p == P_OS || p == P_CPUSRC || p >= P_MAT;
+                    if ((p == P_OS || p == P_CPUSRC) && k == 1 && k + 1 < n) ++k;  // своя платформа необязательна
+                    if (p == P_OS && k >= 2 && year >= PARAM_YEAR[p][k])
+                        toast("Купите лицензию: «Своя платформа» > «Лицензии ОС»");
+                    else if (byYear)
+                        toast((p < P_MAT && k == 1) ? std::string("Сначала разработайте свою платформу")
+                                                    : std::string(opt(p, k).name) + ": появится в " + std::to_string(PARAM_YEAR[p][k]) + " году");
+                    else
+                        toast(std::string(opt(p, k).name) + ": нужно исследование");
+                    sfx(SFX_ERR);
+                }
+            }
             std::string cs;
             if (p == P_SIZE) cs = "x" + fmt1(SIZE_OPT[d.p[p]].cost);
             else cs = "+$" + fmtNum(opt(p, d.p[p]).cost * G.infl);
             drawTextR(cs, row.x + row.w - 6, ry + 46, 1, C_DIM);
-        } else if (i == NPARAM) {
+        } else if (rowId[i] == -1) {
             drawIcon(17, row.x + 30, ry + 32, 40, C_ACC);
             drawText("Цена", row.x + 60, ry + 25, 2, C_TEXT);
             int st = priceStep(d.price);
@@ -3500,7 +3718,6 @@ void scrDesign() {
         fillRect(36 + k * 46, y, 42, 12, (k + 1) <= (int)std::round(sc) ? ratingCol(sc) : C_PANEL2);
     y += 24;
     if (button({36, 586, 452, 46}, "Своя платформа: процессор и ОС")) {
-        retScreen = SC_DESIGN;
         setScreen(SC_PLATFORM);
     }
     int fs = freeSlot();
@@ -3526,25 +3743,47 @@ void scrDesign() {
 
 void projectPanel(int x, const std::string& title, Proj& pr, const PO (&st)[3][3], const char* const* names,
                   const char* what) {
-    panel(x, 96, 612, 600, "");
-    drawText(title, x + 16, 108, 3, C_ACC);
+    panel(x, 124, 612, 582, "");
+    drawText(title, x + 16, 136, 3, C_ACC);
     if (pr.st >= 3) {
-        drawText("Готов. Качество: " + std::to_string(pr.q), x + 16, 160, 2, C_GREEN);
+        drawText("Версия " + std::to_string(pr.ver) + ". Качество: " + std::to_string(pr.q), x + 16, 188, 2, C_GREEN);
+        drawText(std::string("В конструкторе доступен вариант «") + (&pr == &PRJ_CPU ? "Свой процессор" : "Своя ОС") + "»:", x + 16, 224, 2, C_DIM);
+        drawText("без лицензионных отчислений с каждого устройства.", x + 16, 248, 2, C_DIM);
+        if (pr.up) {
+            int left = (int)std::ceil(std::max(0.0, upDays(pr) - pr.prog) / std::max(0.01, devSpeed()));
+            drawText("Идёт разработка версии " + std::to_string(pr.ver + 1) + ", осталось ≈ " + std::to_string(left) + " дн.", x + 16, 298, 2, C_TEXT);
+            progressBar({x + 16, 328, 580, 22}, pr.prog / upDays(pr), C_GREEN);
+        } else if (pr.ver >= PROJ_MAXVER) {
+            drawText("Достигнута последняя версия.", x + 16, 298, 2, C_DIM);
+        } else {
+            double uc = ic(30000.0 * pr.ver);
+            drawText("Новая версия: +" + std::to_string(PROJ_UPQ) + " к качеству. Уже выпущенные", x + 16, 298, 2, C_TEXT);
+            drawText("устройства остаются на старой версии.", x + 16, 322, 2, C_TEXT);
+            if (button({x + 16, 358, 580, 60}, "Улучшить до версии " + std::to_string(pr.ver + 1) + ": " + fmtMoney(uc), G.money >= uc, true)) {
+                G.money -= uc;
+                G.monExp += uc;
+                pr.up = 1;
+                pr.prog = 0;
+                logMsg(std::string(what) + ": начата разработка версии " + std::to_string(pr.ver + 1));
+                toast("Разработка новой версии начата");
+            }
+        }
+        if (button({x + 16, 628, 580, 60}, "Открыть конструктор")) setScreen(SC_DESIGN);
         return;
     }
-    drawText("Этап " + std::to_string(pr.st + 1) + " из 3: " + names[pr.st], x + 16, 160, 2, C_TEXT);
+    drawText("Этап " + std::to_string(pr.st + 1) + " из 3: " + names[pr.st], x + 16, 188, 2, C_TEXT);
     if (pr.pick >= 0) {
         const PO& o = st[pr.st][pr.pick];
         int left = (int)std::ceil(std::max(0.0, o.days - pr.prog));
-        drawText("Идёт: " + std::string(o.n) + ", осталось " + std::to_string(left) + " дн.", x + 16, 200, 2, C_DIM);
-        progressBar({x + 16, 232, 580, 22}, pr.prog / o.days, C_GREEN);
+        drawText("Идёт: " + std::string(o.n) + ", осталось " + std::to_string(left) + " дн.", x + 16, 228, 2, C_DIM);
+        progressBar({x + 16, 260, 580, 22}, pr.prog / o.days, C_GREEN);
     } else {
-        drawText("Выберите подход (оплата при старте этапа):", x + 16, 200, 2, C_DIM);
+        drawText("Выберите подход (оплата при старте этапа):", x + 16, 228, 2, C_DIM);
         for (int i = 0; i < 3; ++i) {
             const PO& o = st[pr.st][i];
             std::string lbl = std::string(o.n) + "  $" + fmtNum(ic(o.cost)) + "  " + std::to_string(o.days) + " дн.  +" +
                               std::to_string(o.q);
-            SDL_Rect r = {x + 16, 270 + i * 74, 580, 60};
+            SDL_Rect r = {x + 16, 298 + i * 74, 580, 60};
             if (button(r, lbl, G.money >= ic(o.cost))) {
                 G.money -= ic(o.cost);
                 G.monExp += ic(o.cost);
@@ -3555,13 +3794,49 @@ void projectPanel(int x, const std::string& title, Proj& pr, const PO (&st)[3][3
             }
         }
     }
-    drawText("Накоплено качества: " + std::to_string(pr.q), x + 16, 520, 2, C_TEXT);
+    drawText("Накоплено качества: " + std::to_string(pr.q), x + 16, 548, 2, C_TEXT);
 }
 
+// Разовая цена лицензии на готовую ОС (в ценах 1960 года); отчисления с каждого устройства остаются
+const double OS_LIC_PRICE[7] = {0, 0, 8000, 15000, 30000, 50000, 80000};
+int platTab = 0;
 void scrPlatform() {
-    drawText("Своя платформа: этапы разработки. Качество складывается из выбранных подходов.", 24, 76, 2, C_ACC);
-    projectPanel(16, "Процессор", PRJ_CPU, CPU_STAGES, CPU_NAMES, "Процессор");
-    projectPanel(652, "Операционная система", PRJ_OS, OS_STAGES, OS_NAMES, "ОС");
+    if (button({16, 68, 300, 48}, "Своя разработка", true, platTab == 0)) platTab = 0;
+    if (button({326, 68, 300, 48}, "Лицензии ОС", true, platTab == 1)) platTab = 1;
+    if (platTab == 0) {
+        drawTextR("Качество складывается из выбранных подходов", 1264, 84, 2, C_DIM);
+        projectPanel(16, "Процессор", PRJ_CPU, CPU_STAGES, CPU_NAMES, "Процессор");
+        projectPanel(652, "Операционная система", PRJ_OS, OS_STAGES, OS_NAMES, "ОС");
+        return;
+    }
+    panel(16, 126, 1248, 580, "");
+    drawText("Готовые операционные системы", 32, 138, 3, C_ACC);
+    drawText("Лицензия покупается один раз, плюс отчисления с каждого проданного устройства.", 32, 176, 2, C_DIM);
+    const int year = calYear();
+    for (int t = 2; t < 7; ++t) {
+        int y = 210 + (t - 2) * 96;
+        SDL_Rect r = {32, y, 1216, 86};
+        fillRound(r, 10, C_PANEL2);
+        drawIcon(33, r.x + 40, r.y + 43, 44, C_ACC);
+        drawText(OS_OPT[t].name, r.x + 84, r.y + 14, 3, C_TEXT);
+        drawText("Качество " + std::to_string((int)OS_OPT[t].q) + "   Отчисления $" + fmtNum(OS_OPT[t].cost * G.infl) + " с устройства",
+                 r.x + 84, r.y + 52, 2, C_DIM);
+        bool owned = ((G.osLic >> t) & 1) != 0;
+        double pr = ic(OS_LIC_PRICE[t]);
+        SDL_Rect br = {r.x + r.w - 316, r.y + 13, 300, 60};
+        if (owned) {
+            drawTextC("Куплено", br.x + br.w / 2, br.y + 22, 2, C_GREEN);
+        } else if (year < PARAM_YEAR[P_OS][t]) {
+            drawTextC("Появится в " + std::to_string(PARAM_YEAR[P_OS][t]) + " году", br.x + br.w / 2, br.y + 22, 2, C_DIM);
+        } else if (button(br, "Купить: " + fmtMoney(pr), G.money >= pr, true)) {
+            G.money -= pr;
+            G.monExp += pr;
+            G.osLic |= 1 << t;
+            logMsg(std::string("Куплена лицензия: ") + OS_OPT[t].name);
+            toast("Лицензия куплена: выберите ОС в конструкторе");
+            sfx(SFX_CASH);
+        }
+    }
 }
 
 void scrAwards() {
@@ -4090,7 +4365,6 @@ void scrLaunch() {
     salesChart({468, 424, 780, 196}, p);
     if (button({468, 630, 189, 60}, "Снять с продаж", p.onSale)) discontinue(p, "снят с продаж");
     if (button({665, 630, 189, 60}, "Реклама", p.onSale)) {
-        retScreen = SC_LAUNCH;
         setScreen(SC_ADS);
     }
     {
@@ -4615,7 +4889,7 @@ void scrPause() {
     if (button({816, 156, 56, 52}, "+", A.vol < 0.999f)) { A.vol = std::min(1.0f, A.vol + 0.1f); }
     if (!A.dev) drawTextC("(звук недоступен)", W / 2, 216, 2, C_DIM);
     int y = 240;
-    if (button({440, y, 400, 60}, "Продолжить", true, true)) setScreen(retScreen == SC_PAUSE ? SC_MAIN : retScreen);
+    if (button({440, y, 400, 60}, "Продолжить", true, true)) setScreen(pauseRet());
     y += 72;
     if (button({440, y, 400, 60}, "Сохранить", !savePath.empty()))
         toast(saveGame() ? "Игра сохранена" : "Не удалось сохранить");
@@ -4868,7 +5142,7 @@ void scrNewRegion() {
     }
     drawText("Другие рынки откроются позже", 624, 552, 2, C_DIM);
     if (button({24, 628, 220, 62}, "< Назад")) goBack();
-    drawTextC(fitText(newName.empty() ? std::string("Девайс-Корп") : newName, 2, 400), W / 2, 650, 2, C_DIM);
+    drawTextC(fitText(newName.empty() ? std::string("Device Corp") : newName, 2, 400), W / 2, 650, 2, C_DIM);
     if (button({W - 24 - 420, 628, 420, 62}, "Основать компанию", true, true, 3)) startNewCompany();
 }
 
