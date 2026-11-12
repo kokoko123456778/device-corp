@@ -1159,14 +1159,17 @@ void progressBar(SDL_Rect r, double f, Col c) {
 enum { P_SIZE, P_COLOR, P_SCREEN, P_CPU, P_BATT, P_SPK, P_PACK, P_CAMN, P_CAMRES, P_CAMSZ, P_OS, P_CPUSRC,
        // Характеристики «как в карточке товара»: покупные компоненты, появляются на рынке по годам
        P_MAT, P_IP, P_HZ, P_GLASS, P_RAM, P_ROM, P_STAB, P_FRONT, P_CELL, P_SIM, P_WIFI, P_BT, P_NFC, P_GPS, P_IR,
-       P_ANC, P_FAST, P_WLESS, P_CHG, P_BIO, P_SENS, NPARAM };
+       P_ANC, P_FAST, P_WLESS, P_CHG, P_BIO, P_SENS,
+       P_AI,  // нейросеть: своя разработка или готовая
+       NPARAM };
+const int NPARAM_V6 = 33;   // столько параметров было в сохранениях версий 6–11
 const int NPARAM_OLD = 12;  // столько параметров было в сохранениях до версии 6
 const char* PARAM_NAMES[NPARAM] = {"Размер", "Цвет", "Экран", "Процессор", "Батарея", "Динамики", "Упаковка",
                                     "Камеры", "Разрешение", "Сенсор", "ОС", "Источник ЦП",
                                     "Материал", "Влагозащита", "Частота", "Стекло", "ОЗУ", "Накопитель",
                                     "Стабилизация", "Фронталка", "Сеть", "SIM-карты", "Wi-Fi", "Bluetooth", "NFC",
                                     "Навигация", "ИК-порт", "Шумодав", "Быстр. заряд", "Беспр. заряд",
-                                    "Зарядное", "Биометрия", "Датчики"};
+                                    "Зарядное", "Биометрия", "Датчики", "Нейросеть"};
 
 struct Opt { const char* name; double cost; double q; };
 const Opt SIZE_OPT[4] = {{"Компактный", 0.85, 0}, {"Стандарт", 1.0, 0}, {"Большой", 1.2, 0}, {"Огромный", 1.45, 0}};
@@ -1235,11 +1238,15 @@ const Opt BIO_OPT[5] = {{"Нет", 0, 0}, {"Сканер отпечатка", 6,
                         {"Сканер в экране", 14, 30}, {"Ультразвуковой + лицо", 20, 40}};
 const Opt SENS_OPT[5] = {{"Нет", 0, 0}, {"Акселерометр", 3, 8}, {"Гироскоп и компас", 6, 18},
                          {"Пульс и шагомер", 10, 28}, {"Полный набор", 16, 38}};
+// Вариант 1 — своя нейросеть: её качество задаёт проект на экране «Своя платформа»
+Opt AI_OPT[5] = {{"Нет", 0, 0}, {"Своя нейросеть", 0, 0}, {"Голосовой помощник", 8, 22}, {"Облачный ИИ", 14, 36},
+                 {"Генеративный ИИ", 22, 50}};
 struct OptTab { const Opt* o; int n; };
 const OptTab NEW_OPT[NPARAM - P_MAT] = {
     {MAT_OPT, 5}, {IP_OPT, 6}, {HZ_OPT, 5}, {GLASS_OPT, 5}, {RAM_OPT, 7}, {ROM_OPT, 7}, {STAB_OPT, 4},
     {FRONT_OPT, 5}, {CELL_OPT, 6}, {SIM_OPT, 4}, {WIFI_OPT, 6}, {BT_OPT, 6}, {NFC_OPT, 3}, {GPS_OPT, 4},
-    {IR_OPT, 2}, {ANC_OPT, 4}, {FAST_OPT, 5}, {WLESS_OPT, 4}, {CHG_OPT, 3}, {BIO_OPT, 5}, {SENS_OPT, 5}};
+    {IR_OPT, 2}, {ANC_OPT, 4}, {FAST_OPT, 5}, {WLESS_OPT, 4}, {CHG_OPT, 3}, {BIO_OPT, 5}, {SENS_OPT, 5},
+    {AI_OPT, 5}};
 
 int optCount(int p) {
     if (p >= P_MAT) return NEW_OPT[p - P_MAT].n;
@@ -1277,15 +1284,15 @@ struct Cat { const char* name; const char* series; double costMult; double deman
 const int NCAT = 5;
 const Cat CATS[NCAT] = {
     {"Планшет", "Tab", 1.0, 50, 2, 70, 18, {1.0, 0.6, 1.5, 1.3, 1.4, 0.8, 0.5, 0.5, 0.6, 0.4, 1.5, 1.3,
-      0.6, 0.3, 0.6, 0.5, 1.0, 1.0, 0.2, 0.5, 0.5, 0.2, 1.0, 0.5, 0, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.4, 0.4}},
+      0.6, 0.3, 0.6, 0.5, 1.0, 1.0, 0.2, 0.5, 0.5, 0.2, 1.0, 0.5, 0, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.4, 0.4, 1.6}},
     {"Телефон", "Phone", 1.2, 40, 1, 79, 20, {1.0, 0.7, 1.5, 1.5, 1.2, 0.8, 0.5, 0.8, 1.2, 0.8, 1.5, 1.5,
-      0.6, 0.5, 0.6, 0.5, 1.0, 1.0, 0.5, 0.6, 1.5, 0.4, 0.8, 0.6, 0.4, 0.5, 0.2, 0.3, 0.6, 0.4, 0.4, 0.6, 0.4}},
+      0.6, 0.5, 0.6, 0.5, 1.0, 1.0, 0.5, 0.6, 1.5, 0.4, 0.8, 0.6, 0.4, 0.5, 0.2, 0.3, 0.6, 0.4, 0.4, 0.6, 0.4, 2.0}},
     {"Наручные часы", "Watch", 1.0, 28, 0, 120, 16, {1.0, 1.0, 1.2, 0.8, 1.5, 0.3, 0.5, 0, 0, 0, 0.4, 0.8,
-      1.0, 1.0, 0.3, 0.8, 0.3, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.8, 0.5, 0.6, 0, 0, 0.3, 0.5, 0.3, 0, 1.0}},
+      1.0, 1.0, 0.3, 0.8, 0.3, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.8, 0.5, 0.6, 0, 0, 0.3, 0.5, 0.3, 0, 1.0, 1.0}},
     {"Калькулятор", "Calc", 1.5, 20, 1, 150, 20, {0.8, 0.5, 1.0, 1.2, 1.0, 0.0, 0.5, 0, 0, 0, 0, 1.2,
-      0.4, 0, 0, 0.2, 0.3, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0}},
+      0.4, 0, 0, 0.2, 0.3, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0, 0, 0}},
     {"Компьютер", "PC", 4.0, 14, 2, 1500, 30, {0.9, 0.5, 1.4, 2.0, 1.4, 0.7, 0.5, 0.6, 0.6, 0.5, 2.0, 2.0,
-      0.4, 0, 0.5, 0.2, 1.5, 1.5, 0, 0.4, 0.2, 0, 1.0, 0.4, 0, 0, 0.2, 0, 0.3, 0, 0.3, 0.4, 0}},
+      0.4, 0, 0.5, 0.2, 1.5, 1.5, 0, 0.4, 0.2, 0, 1.0, 0.4, 0, 0, 0.2, 0, 0.3, 0, 0.3, 0.4, 0, 2.0}},
 };
 const char* SUFFIX[10] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Omega", "Super", "Mini", "Max", "Pro"};
 
@@ -1404,6 +1411,7 @@ const int PARAM_YEAR[NPARAM][8] = {
     {0, 1965, 2014, 0, 0, 0, 0, 0},            // зарядное в комплекте
     {0, 2013, 2017, 2018, 2021, 0, 0, 0},      // биометрия
     {0, 2007, 2010, 2014, 2020, 0, 0, 0},      // датчики
+    {0, 1986, 2011, 2018, 2023, 0, 0, 0},      // нейросеть: своя (после исследования) и готовые
 };
 
 void buildTechs() {
@@ -1684,6 +1692,13 @@ const PO OS_STAGES[3][3] = {
     {{"Командная строка", 5000, 10, 2}, {"Оконный интерфейс", 40000, 60, 8}, {"Сенсорный интерфейс", 70000, 80, 12}},
     {{"Минимум драйверов", 5000, 10, 1}, {"Совместимость с периферией", 25000, 40, 5}, {"Полная библиотека", 50000, 70, 9}}};
 const char* const OS_NAMES[3] = {"Ядро", "Интерфейс", "Драйверы и тесты"};
+// Своя нейросеть: третий проект платформы
+Proj PRJ_AI;
+const PO AI_STAGES[3][3] = {
+    {{"Простая сеть", 20000, 30, 4}, {"Глубокая сеть", 45000, 50, 8}, {"Сеть с вниманием", 90000, 80, 12}},
+    {{"Открытые наборы данных", 10000, 20, 3}, {"Данные своих пользователей", 40000, 40, 7}, {"Огромный корпус текстов", 90000, 70, 11}},
+    {{"На офисных машинах", 8000, 30, 2}, {"Арендованный кластер", 40000, 40, 6}, {"Свой суперкомпьютер", 100000, 60, 10}}};
+const char* const AI_NAMES[3] = {"Архитектура", "Данные", "Обучение"};
 
 int calYear();
 bool tierUnlocked(int p, int t) {
@@ -1699,11 +1714,15 @@ bool tierUnlocked(int p, int t) {
         return calYear() >= PARAM_YEAR[p][t];
     }
     if (t == 0) return true;
+    if (p == P_AI && t == 1) return PRJ_AI.st == 3;        // своя нейросеть: когда разработана
     if (p >= P_MAT) return calYear() >= PARAM_YEAR[p][t];  // покупные компоненты: доступны с года появления
     return techDone(techFor[p][t]);
 }
 // Новая характеристика учитывается в оценке только с года, когда она появилась на рынке
-bool paramLive(int p, int year) { return p < P_MAT || year >= PARAM_YEAR[p][1]; }
+// (нейросеть входит в ожидания рынка только с появлением готовых помощников)
+bool paramLive(int p, int year) { return p < P_MAT || year >= PARAM_YEAR[p][p == P_AI ? 2 : 1]; }
+// Показывать ли строку параметра в конструкторе
+bool paramShown(int p, int year) { return p == P_AI ? year >= PARAM_YEAR[P_AI][1] : paramLive(p, year); }
 bool catUnlocked(int c) { return c < 2 || techDone(techCat[c]); }
 int countKind(int kind) {
     int n = 0;
@@ -1751,7 +1770,7 @@ double eraQuality(int year) {
                 q = 20;
             } else {
                 for (int t = 0; t < optCount(p); ++t) {
-                    if ((p == P_OS || p == P_CPUSRC) && t == 1) continue;  // своя платформа зависит от игрока
+                    if ((p == P_OS || p == P_CPUSRC || p == P_AI) && t == 1) continue;  // своя платформа зависит от игрока
                     if (p != P_COLOR && t > 0 && PARAM_YEAR[p][t] > year) continue;
                     q = std::max(q, opt(p, t).q);
                 }
@@ -1790,7 +1809,12 @@ double draftQuality(const Draft& d) {
     double sw = 0, sq = 0;
     for (int p = 0; p < NPARAM; ++p) {
         double w = c.w[p];
-        if (w <= 0 || !paramLive(p, calYear())) continue;
+        if (w <= 0) continue;
+        if (!paramLive(p, calYear())) {
+            // своя нейросеть раньше рынка — чистый бонус: прибавляет к оценке, но никто её ещё не ждёт
+            if (p == P_AI && d.p[p] == 1) sq += w * (AI_OPT[1].q + bP);
+            continue;
+        }
         double q, b;
         if (p == P_SIZE) { q = std::max(0.0, 20.0 - 9.0 * std::abs(d.p[p] - c.idealSize)); b = bD; }
         else if (p == P_COLOR) { q = COLOR_OPT[d.p[p]].q + (d.p[p] == G.trend ? 10.0 : 0.0); b = bD; }
@@ -2172,6 +2196,8 @@ void newGame(const std::string& name, int capIdx, int home = 0) {
     G.market[REGS[G.home].mk] = true;  // домашний рынок открыт с первого дня
     PRJ_CPU = Proj();
     PRJ_OS = Proj();
+    PRJ_AI = Proj();
+    AI_OPT[1].q = 0;
     for (int i = 0; i < NCOMP; ++i) G.comp[i] = COMP_START * std::pow(COMP_STEP, i) * (0.8 + 0.4 * frand());
     rollCompLuck();
     syncCompNames();
@@ -2319,7 +2345,7 @@ RepPart repBreakdown() {
 double eraBestQ(int p, int year) {
     double q = 0;
     for (int t = 0; t < optCount(p); ++t) {
-        if ((p == P_OS || p == P_CPUSRC) && t == 1) continue;
+        if ((p == P_OS || p == P_CPUSRC || p == P_AI) && t == 1) continue;
         if (t > 0 && PARAM_YEAR[p][t] > year) continue;
         q = std::max(q, opt(p, t).q);
     }
@@ -3065,6 +3091,7 @@ void advanceProj(Proj& pr, const PO (&st)[3][3], Opt& own, const char* const* na
 void tickProjects() {
     advanceProj(PRJ_CPU, CPU_STAGES, CPUSRC_OPT[1], CPU_NAMES, "Процессор");
     advanceProj(PRJ_OS, OS_STAGES, OS_OPT[1], OS_NAMES, "Операционная система");
+    advanceProj(PRJ_AI, AI_STAGES, AI_OPT[1], AI_NAMES, "Нейросеть");
 }
 
 void tickDay() {
@@ -3278,7 +3305,7 @@ bool saveGame() {
     if (savePath.empty()) return false;
     std::ostringstream o;
     o.precision(17);
-    o << "DEVCORP11";
+    o << "DEVCORP12";
     wstr(o, G.company);
     o << G.money << ' ' << G.rep << ' ' << G.fans << ' ' << G.day << ' ' << G.speed << ' ' << G.office << ' '
       << G.hype << ' ' << G.trend << ' ' << G.negMonths << ' ' << G.monInc << ' ' << G.monExp << ' '
@@ -3345,6 +3372,7 @@ bool saveGame() {
       << ' ' << G.lastDiv << ' ' << G.supplier << ' ' << G.supUntil << ' ' << G.supHalt << ' ' << G.prodToday << ' '
       << (G.crunch ? 1 : 0) << ' ' << (G.ussrSplit ? 1 : 0) << ' ' << (G.slot[0].crunch ? 1 : 0) << ' ' << G.home << ' ' << G.goal << ' ' << G.osLic << ' ' << G.nameNext << ' ' << G.service;
     for (int i = 0; i < NCOMP; ++i) o << ' ' << G.compName[i] << ' ' << G.compLuck[i];
+    o << ' ' << PRJ_AI.st << ' ' << PRJ_AI.pick << ' ' << PRJ_AI.prog << ' ' << PRJ_AI.q << ' ' << PRJ_AI.ver << ' ' << PRJ_AI.up;
     o << '\n';
     for (int l = 0; l < 2; ++l)
         for (size_t i = 0; i < lists[l]->size(); ++i) o << (*lists[l])[i].xp << ' ' << (*lists[l])[i].ask << ' ';
@@ -3390,10 +3418,11 @@ bool loadGame() {
     std::istringstream is(data);
     std::string magic;
     is >> magic;
-    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5" && magic != "DEVCORP6" && magic != "DEVCORP7" && magic != "DEVCORP8" && magic != "DEVCORP9" && magic != "DEVCORP10" && magic != "DEVCORP11") return false;
+    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5" && magic != "DEVCORP6" && magic != "DEVCORP7" && magic != "DEVCORP8" && magic != "DEVCORP9" && magic != "DEVCORP10" && magic != "DEVCORP11" && magic != "DEVCORP12") return false;
     const bool v3 = magic != "DEVCORP2", v4 = v3 && magic != "DEVCORP3", v5 = v4 && magic != "DEVCORP4",
-               v6 = v5 && magic != "DEVCORP5", v7 = v6 && magic != "DEVCORP6", v8 = v7 && magic != "DEVCORP7", v9 = v8 && magic != "DEVCORP8", v10 = v9 && magic != "DEVCORP9", v11 = v10 && magic != "DEVCORP10";
-    const int npar = v6 ? NPARAM : NPARAM_OLD;  // в старых файлах параметров меньше  // старые сохранения тоже читаются
+               v6 = v5 && magic != "DEVCORP5", v7 = v6 && magic != "DEVCORP6", v8 = v7 && magic != "DEVCORP7", v9 = v8 && magic != "DEVCORP8", v10 = v9 && magic != "DEVCORP9", v11 = v10 && magic != "DEVCORP10", v12 = v11 && magic != "DEVCORP11";
+    Proj lai;
+    const int npar = v12 ? NPARAM : (v6 ? NPARAM_V6 : NPARAM_OLD);  // в старых файлах параметров меньше  // старые сохранения тоже читаются
     Game g;
     float vol = A.vol;
     if (!rstr(is, g.company)) return false;
@@ -3506,6 +3535,13 @@ bool loadGame() {
                 g.compLuck[i] = clampd(g.compLuck[i], 0.1, 3.0);
             }
             g.nameNext = clampi(g.nameNext, 0, NNAME - 1);
+            if (v12) {
+                is >> lai.st >> lai.pick >> lai.prog >> lai.q >> lai.ver >> lai.up;
+                lai.st = clampi(lai.st, 0, 3);
+                lai.pick = clampi(lai.pick, -1, 2);
+                lai.ver = clampi(lai.ver, 1, PROJ_MAXVER);
+                lai.up = (lai.up && lai.st == 3 && lai.ver < PROJ_MAXVER) ? 1 : 0;
+            }
         }
         g.ipo = ipo != 0; g.crunch = crunch != 0; g.ussrSplit = split != 0; g.slot[0].crunch = c0 != 0;
         for (int l = 0; l < 2; ++l)
@@ -3596,6 +3632,8 @@ bool loadGame() {
     parts.clear();
     PRJ_CPU = lp[0];
     PRJ_OS = lp[1];
+    PRJ_AI = lai;
+    AI_OPT[1].q = PRJ_AI.q;
     OS_OPT[1].q = PRJ_OS.q;
     CPUSRC_OPT[1].q = PRJ_CPU.q;
     A.vol = (float)clampd(vol, 0, 1);
@@ -4332,6 +4370,13 @@ void drawIcon(int kind, int cx, int cy, int S, Col c) {
             R2(4, 18, 32, 18, 1, c);
             for (int i = 0; i < 3; ++i) R2(8 + i * 9, 24, 5, 7, 0, scrC);
             break;
+        case 55:  // нейросеть: узлы и связи
+            R2(8, 9, 12, 2, 0, d); R2(8, 29, 12, 2, 0, d); R2(20, 19, 12, 2, 0, d);
+            R2(19, 10, 2, 20, 0, d);
+            CI(8, 10, 5, c); CI(8, 30, 5, c);
+            CI(20, 10, 5, c); CI(20, 30, 5, c); CI(20, 20, 4, scrC);
+            CI(32, 20, 6, c);
+            break;
         case 17:  // цена
             R2(4, 10, 32, 20, 4, c);
             CI(12, 20, 3, scrC);
@@ -4375,7 +4420,7 @@ const Sec SECS[NSEC] = {
     {"Связь", {P_CELL, P_SIM, P_WIFI, P_BT, P_NFC, P_GPS, P_IR, -1}},
     {"Звук", {P_SPK, P_ANC, -1, -1, -1, -1, -1, -1}},
     {"Питание", {P_BATT, P_FAST, P_WLESS, P_CHG, -1, -1, -1, -1}},
-    {"Функции", {P_BIO, P_SENS, -1, -1, -1, -1, -1, -1}},
+    {"Функции", {P_BIO, P_SENS, P_AI, -1, -1, -1, -1, -1}},
     {"Продажа", {P_PACK, -1, -1, -1, -1, -1, -1, -1}},
 };
 int designSec = 0;
@@ -4383,7 +4428,7 @@ int designView = 0;  // предпросмотр: 0 — спереди, 1 — с
 int paramIcon(int p) {
     if (p < 7) return 10 + p;
     if (p < P_MAT) return 23 + p;
-    static const int ic[NPARAM - P_MAT] = {46, 43, 12, 43, 44, 44, 31, 30, 40, 40, 41, 41, 41, 47, 41, 15, 42, 42, 42, 45, 47};
+    static const int ic[NPARAM - P_MAT] = {46, 43, 12, 43, 44, 44, 31, 30, 40, 40, 41, 41, 41, 47, 41, 15, 42, 42, 42, 45, 47, 55};
     return ic[p - P_MAT];
 }
 
@@ -4437,7 +4482,7 @@ void scrDesign() {
             int p = rowId[i];
             drawIcon(paramIcon(p), row.x + 30, ry + 32, 40, C_ACC);
             drawText(PARAM_NAMES[p], row.x + 60, ry + 25, 2, C_TEXT);
-            if (!paramLive(p, year)) {
+            if (!paramShown(p, year)) {
                 drawText("Появится на рынке в " + std::to_string(PARAM_YEAR[p][1]) + " году", row.x + 232, ry + 25, 2, C_DIM);
                 continue;
             }
@@ -4471,7 +4516,10 @@ void scrDesign() {
                     int k = d.p[p] + 1;
                     bool byYear = p == P_OS || p == P_CPUSRC || p >= P_MAT;
                     if ((p == P_OS || p == P_CPUSRC) && k == 1 && k + 1 < n) ++k;  // своя платформа необязательна
-                    if (p == P_OS && k >= 2 && year >= PARAM_YEAR[p][k])
+                    if (p == P_AI && k == 1 && k + 1 < n && year >= PARAM_YEAR[p][2]) ++k;  // своя нейросеть необязательна
+                    if (p == P_AI && k == 1)
+                        toast("Создайте нейросеть: «Своя платформа» > «Нейросеть»");
+                    else if (p == P_OS && k >= 2 && year >= PARAM_YEAR[p][k])
                         toast("Купите лицензию: «Своя платформа» > «Лицензии ОС»");
                     else if (byYear)
                         toast((p < P_MAT && k == 1) ? std::string("Сначала разработайте свою платформу")
@@ -4552,7 +4600,7 @@ void scrDesign() {
     for (int k = 0; k < 10; ++k)
         fillRect(36 + k * 46, y, 42, 12, (k + 1) <= (int)std::round(sc) ? ratingCol(sc) : C_PANEL2);
     y += 24;
-    if (button({36, 586, 452, 46}, "Своя платформа: процессор и ОС")) {
+    if (button({36, 586, 452, 46}, "Своя платформа: ЦП, ОС, нейросеть")) {
         setScreen(SC_PLATFORM);
     }
     int fs = freeSlot();
@@ -4589,7 +4637,7 @@ void projectPanel(int x, const std::string& title, Proj& pr, const PO (&st)[3][3
     drawText(title, x + 16, 136, 3, C_ACC);
     if (pr.st >= 3) {
         drawText("Версия " + std::to_string(pr.ver) + ". Качество: " + std::to_string(pr.q), x + 16, 188, 2, C_GREEN);
-        drawText(std::string("В конструкторе доступен вариант «") + (&pr == &PRJ_CPU ? "Свой процессор" : "Своя ОС") + "»:", x + 16, 224, 2, C_DIM);
+        drawText(std::string("В конструкторе доступен вариант «") + (&pr == &PRJ_CPU ? "Свой процессор" : (&pr == &PRJ_AI ? "Своя нейросеть" : "Своя ОС")) + "»:", x + 16, 224, 2, C_DIM);
         drawText("без лицензионных отчислений с каждого устройства.", x + 16, 248, 2, C_DIM);
         if (pr.up) {
             int left = (int)std::ceil(std::max(0.0, upDays(pr) - pr.prog) / std::max(0.01, devSpeed()));
@@ -4639,12 +4687,48 @@ void projectPanel(int x, const std::string& title, Proj& pr, const PO (&st)[3][3
     drawText("Накоплено качества: " + std::to_string(pr.q), x + 16, 548, 2, C_TEXT);
 }
 
+bool hasNeuroTech() {
+    for (size_t t = 0; t < TECHS.size(); ++t)
+        if (TECHS[t].name.rfind("Нейросети", 0) == 0 && techDone((int)t)) return true;
+    return false;
+}
+int drawPara(const std::string& s, int x, int y, int maxW, int sc, Col c, int lh);
+// Вкладка «Нейросеть»: своя модель, которую можно ставить в устройства
+void aiTab() {
+    if (hasNeuroTech()) {
+        projectPanel(16, "Своя нейросеть", PRJ_AI, AI_STAGES, AI_NAMES, "Нейросеть");
+    } else {
+        panel(16, 124, 612, 582, "");
+        drawText("Своя нейросеть", 32, 136, 3, C_ACC);
+        drawIcon(55, 322, 300, 120, C_BORDER);
+        drawPara("Чтобы начать, нужна теория. Изучите в «Науке» технологию «Нейросети: обратное распространение» (доступна с 1986 года).",
+                 40, 420, 560, 2, C_TEXT, 26);
+        if (button({32, 628, 580, 60}, "Открыть «Науку»")) setScreen(SC_RESEARCH);
+    }
+    panel(652, 124, 612, 582, "");
+    drawText("Что даёт нейросеть", 668, 136, 3, C_ACC);
+    drawIcon(55, 1196, 172, 56, C_ACC);
+    int y = drawPara("Умный помощник в устройстве: в разделе «Функции» конструктора появляется параметр «Нейросеть».", 668, 190, 500, 2, C_TEXT, 26);
+    y = drawPara("Своя модель не требует отчислений с каждого устройства, а её качество растёт с каждой версией.", 668, y + 14, 580, 2, C_TEXT, 26);
+    y = drawPara("До 2011 года готовых помощников на рынке нет: своя нейросеть — чистый бонус к оценке, которого нет ни у кого.", 668, y + 14, 580, 2, C_GREEN, 26);
+    y = drawPara("С 2011 года покупатели ждут ИИ в каждом устройстве. Готовые варианты: голосовой помощник (2011), облачный ИИ (2018), генеративный ИИ (2023).", 668, y + 14, 580, 2, C_DIM, 26);
+    drawText("Важность по категориям:", 668, y + 22, 2, C_TEXT);
+    for (int c = 0; c < NCAT; ++c) {
+        int ry = y + 54 + c * 30;
+        if (ry > 670) break;
+        drawText(CATS[c].name, 688, ry, 2, C_DIM);
+        progressBar({900, ry + 2, 220, 14}, CATS[c].w[P_AI] / 2.0, C_ACC);
+    }
+}
+
 // Разовая цена лицензии на готовую ОС (в ценах 1960 года); отчисления с каждого устройства остаются
 const double OS_LIC_PRICE[7] = {0, 0, 8000, 15000, 30000, 50000, 80000};
 int platTab = 0;
 void scrPlatform() {
-    if (button({16, 68, 300, 48}, "Своя разработка", true, platTab == 0)) platTab = 0;
-    if (button({326, 68, 300, 48}, "Лицензии ОС", true, platTab == 1)) platTab = 1;
+    if (button({16, 68, 300, 48}, "Процессор и ОС", true, platTab == 0)) platTab = 0;
+    if (button({326, 68, 300, 48}, "Нейросеть", true, platTab == 2)) platTab = 2;
+    if (button({636, 68, 300, 48}, "Лицензии ОС", true, platTab == 1)) platTab = 1;
+    if (platTab == 2) { aiTab(); return; }
     if (platTab == 0) {
         drawTextR("Качество складывается из выбранных подходов", 1264, 84, 2, C_DIM);
         projectPanel(16, "Процессор", PRJ_CPU, CPU_STAGES, CPU_NAMES, "Процессор");
