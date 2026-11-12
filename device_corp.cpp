@@ -31,21 +31,22 @@ double clampd(double v, double a, double b) { return v < a ? a : (v > b ? b : v)
 int clampi(int v, int a, int b) { return v < a ? a : (v > b ? b : v); }
 
 struct Col { Uint8 r, g, b, a; };
-const Col C_BG     = {16, 20, 32, 255};
-const Col C_PANEL  = {28, 34, 52, 255};
-const Col C_PANEL2 = {22, 27, 42, 255};
-const Col C_BORDER = {58, 70, 104, 255};
-const Col C_TEXT   = {232, 236, 246, 255};
-const Col C_DIM    = {140, 152, 178, 255};
-const Col C_ACC    = {70, 180, 255, 255};
-const Col C_GREEN  = {80, 210, 120, 255};
+// Палитра: тёмный индиго, мятный акцент, фиолетово-синие кнопки
+const Col C_BG     = {13, 15, 26, 255};
+const Col C_PANEL  = {28, 31, 52, 255};
+const Col C_PANEL2 = {20, 22, 38, 255};
+const Col C_BORDER = {62, 68, 108, 255};
+const Col C_TEXT   = {234, 238, 248, 255};
+const Col C_DIM    = {146, 152, 184, 255};
+const Col C_ACC    = {84, 214, 196, 255};
+const Col C_GREEN  = {92, 214, 120, 255};
 const Col C_RED    = {235, 85, 85, 255};
-const Col C_YEL    = {255, 214, 40, 255};
+const Col C_YEL    = {255, 206, 64, 255};
 const Col C_ORANGE = {255, 150, 60, 255};
-const Col C_BTN    = {48, 60, 92, 255};
-const Col C_BTNH   = {66, 82, 124, 255};
-const Col C_BTNSEL = {36, 120, 200, 255};
-const Col C_BTND   = {36, 40, 54, 255};
+const Col C_BTN    = {50, 54, 94, 255};
+const Col C_BTNH   = {68, 74, 126, 255};
+const Col C_BTNSEL = {92, 98, 232, 255};
+const Col C_BTND   = {34, 36, 52, 255};
 
 Col shade(Col c, double k) {
     Col o;
@@ -1005,10 +1006,16 @@ bool button(const SDL_Rect& r, const std::string& label, bool enabled = true, bo
     bool hov = hovered(r);
     Col c = !enabled ? C_BTND : (sel ? C_BTNSEL : (hov ? C_BTNH : C_BTN));
     if (enabled && hov && U.mdown && !U.dragging) c = shade(C_BTNSEL, 0.8);
-    if (enabled) fillRound({r.x, r.y + 3, r.w, r.h}, 8, shade(C_BG, 0.55));   // тень
-    fillRound(r, 8, shade(c, 0.7));                                             // нижний край
-    fillRound({r.x + 1, r.y + 1, r.w - 2, r.h - 3}, 7, c);                      // тело
-    fillRect(r.x + 10, r.y + 2, r.w - 20, 1, shade(c, 1.5));                    // блик
+    const int rad = std::min(12, r.h / 4);
+    if (enabled) fillRound({r.x, r.y + 3, r.w, r.h}, rad, {0, 0, 0, 120});     // тень
+    fillRound(r, rad, shade(c, 0.68));                                          // нижний край
+    fillRound({r.x + 1, r.y + 1, r.w - 2, r.h - 3}, rad - 1, c);                // тело
+    if (enabled && r.h >= 40) {                                                 // светлая верхняя половина
+        fillRound({r.x + 1, r.y + 1, r.w - 2, r.h / 2}, rad - 1, shade(c, 1.12));
+        fillRect(r.x + 1, r.y + r.h / 2 - rad, r.w - 2, rad + 1, shade(c, 1.12));
+        fillRect(r.x + 1, r.y + r.h / 2 + 1, r.w - 2, 2, c);
+    }
+    fillRect(r.x + rad, r.y + 2, r.w - 2 * rad, 1, shade(c, 1.5));              // блик
     std::string t = fitText(label, sc, r.w - 12);
     drawTextC(t, r.x + r.w / 2, r.y + (r.h - 7 * sc) / 2, sc, enabled ? C_TEXT : C_DIM);
     drawFocus(r);
@@ -1130,11 +1137,14 @@ void uiEndFrame() {
 }
 
 void panel(int x, int y, int w, int h, const std::string& title) {
-    fillRound({x + 4, y + 6, w, h}, 12, shade(C_BG, 0.5));          // тень
-    fillRound({x, y, w, h}, 12, C_BORDER);                          // рамка
-    fillRound({x + 1, y + 1, w - 2, h - 2}, 11, C_PANEL);           // тело
-    fillRect(x + 12, y + 1, w - 24, 1, shade(C_PANEL, 1.4));        // блик
-    if (!title.empty()) drawTextShadow(title, x + 16, y + 12, 2, C_ACC);
+    fillRound({x + 3, y + 6, w, h}, 16, {0, 0, 0, 110});            // мягкая тень
+    fillRound({x, y, w, h}, 16, shade(C_BORDER, 0.75));             // тонкая рамка
+    fillRound({x + 1, y + 1, w - 2, h - 2}, 15, C_PANEL);           // тело
+    fillRect(x + 16, y + 1, w - 32, 1, shade(C_PANEL, 1.5));        // блик
+    if (!title.empty()) {
+        fillRect(x + 16, y + 13, 4, 15, C_ACC);                     // акцентная метка заголовка
+        drawText(title, x + 28, y + 12, 2, C_ACC);
+    }
 }
 void progressBar(SDL_Rect r, double f, Col c) {
     fillRound(r, r.h / 2, C_PANEL2);
@@ -1266,8 +1276,8 @@ const Opt& opt(int p, int i) {
 struct Cat { const char* name; const char* series; double costMult; double demand; int idealSize; int defPrice; int devDays; double w[NPARAM]; };
 const int NCAT = 5;
 const Cat CATS[NCAT] = {
-    {"Радиоприёмник", "Radio", 0.8, 50, 1, 45, 16, {0.8, 0.6, 0.0, 0.8, 1.0, 2.0, 0.5, 0, 0, 0, 0, 0.8,
-      0.5, 0.2, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.6, 0, 0, 0, 0.4, 0, 0, 0.3, 0, 0}},
+    {"Планшет", "Tab", 1.0, 50, 2, 70, 18, {1.0, 0.6, 1.5, 1.3, 1.4, 0.8, 0.5, 0.5, 0.6, 0.4, 1.5, 1.3,
+      0.6, 0.3, 0.6, 0.5, 1.0, 1.0, 0.2, 0.5, 0.5, 0.2, 1.0, 0.5, 0, 0.3, 0, 0, 0.5, 0.2, 0.4, 0.4, 0.4}},
     {"Телефон", "Phone", 1.2, 40, 1, 79, 20, {1.0, 0.7, 1.5, 1.5, 1.2, 0.8, 0.5, 0.8, 1.2, 0.8, 1.5, 1.5,
       0.6, 0.5, 0.6, 0.5, 1.0, 1.0, 0.5, 0.6, 1.5, 0.4, 0.8, 0.6, 0.4, 0.5, 0.2, 0.3, 0.6, 0.4, 0.4, 0.6, 0.4}},
     {"Наручные часы", "Watch", 1.0, 28, 0, 120, 16, {1.0, 1.0, 1.2, 0.8, 1.5, 0.3, 0.5, 0, 0, 0, 0.4, 0.8,
@@ -1280,7 +1290,7 @@ const Cat CATS[NCAT] = {
 const char* SUFFIX[10] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Omega", "Super", "Mini", "Max", "Pro"};
 
 // wealth — достаток покупателей, tariff — пошлина с выручки, year — с какого года рынок доступен,
-// pref — вкусы по категориям (радио, телефон, часы, калькулятор, компьютер)
+// pref — вкусы по категориям (планшет, телефон, часы, калькулятор, компьютер)
 struct Market { const char* name; double size; double cost; double rep; double wealth; double tariff; int year; double pref[NCAT]; };
 const int NMARKET = 10;
 const Market MARKETS[NMARKET] = {
@@ -1332,6 +1342,16 @@ const char* FIRST_NAMES[16] = {"Алексей", "Мария", "Иван",   "О
 const char* INITIALS[12] = {"А.", "Б.", "В.", "Г.", "Д.", "К.", "Л.", "М.", "Н.", "П.", "С.", "Т."};
 
 const int NCOMP = 20;
+// Пул названий: первые NCOMP работают на старте, остальные — новички, приходящие на место банкротов
+const int NNAME = 44;
+const char* const NAME_POOL[NNAME] = {
+    "Pearfone", "SuperLab", "Vostok Electro", "NeoTek", "PixelCo", "Alpha Radio", "StarVolt",
+    "TransContour", "North Vector", "Quartz Plus", "Orbita", "RhythmTech", "Svetozar", "GlobalChip",
+    "Meridian", "ElectronProm", "Delta Lab", "Ampere", "Zenith Electro", "SigmaTek",
+    "BrightWave", "Cobalt Systems", "Lumina", "Hexa Devices", "Polaris Tech", "Kestrel", "Aurum Electronics",
+    "BlueComet", "Tesseract", "Onyx Mobile", "Vega Labs", "IronLeaf", "Photon Works", "Nimbus", "Altair",
+    "Graphite", "Zephyr", "Corvus", "Halcyon", "Monolith", "Redwood", "Solaris", "Kvant", "Borealis"};
+// Текущие названия конкурентов (меняются, когда фирма банкротится и её место занимает новая)
 const char* COMP_NAMES[NCOMP] = {
     "Pearfone", "SuperLab", "Vostok Electro", "NeoTek", "PixelCo", "Alpha Radio", "StarVolt",
     "TransContour", "North Vector", "Quartz Plus", "Orbita", "RhythmTech", "Svetozar", "GlobalChip",
@@ -1535,6 +1555,11 @@ struct Game {
     int home = 0;                     // регион производства (индекс в REGS)
     int goal = 0;                     // номер текущей цели
     int osLic = 0;                    // купленные лицензии на ОС (бит = номер варианта)
+    // Конкуренты: какое название из пула носит каждая фирма, её удача в этом году, счётчик новых названий
+    int compName[NCOMP] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    double compLuck[NCOMP] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    int nameNext = NCOMP;
+    int service = 0;                  // уровень сети сервисных центров (0..4)
     float goalFlash = 0;              // подсветка карточки после выполнения (не сохраняется)
 };
 Game G;
@@ -1556,6 +1581,7 @@ int qaChoice = 1;      // контроль качества при запуск�
 int batchChoice = -1;  // размер стартовой партии (-1 — подобрать по ожидаемому спросу)
 int orderIdx = 4;      // размер партии для ручного заказа
 int statsTab = 0;
+bool specView = false;  // на странице продукта: график продаж или лист характеристик
 std::string newName;
 int capChoice = 1;
 int newStep = 0;     // 0 — заставка с меню, 1 — компания, 2 — регион производства
@@ -2113,6 +2139,17 @@ double patentRoyalty() {
 }
 double suitWinChance() { return clampd(0.30 + 0.12 * patentCount(), 0.30, 0.85); }
 
+void syncCompNames();
+void rollCompLuck();
+// Рынок конкурентов растёт примерно на 4% в год сверх инфляции: игрок может их догнать
+const double COMP_GROWTH = 0.0033;
+const double COMP_START = 900.0, COMP_STEP = 0.9;
+// Ожидаемый суммарный размер конкурентов на данный день игры
+double compTarget(int day) {
+    double t = 0;
+    for (int i = 0; i < NCOMP; ++i) t += COMP_START * std::pow(COMP_STEP, i);
+    return t * std::pow(1.0 + COMP_GROWTH, day / 30.0);
+}
 void newGame(const std::string& name, int capIdx, int home = 0) {
     G = Game();
     G.home = clampi(home, 0, NREG - 1);
@@ -2120,7 +2157,9 @@ void newGame(const std::string& name, int capIdx, int home = 0) {
     G.market[REGS[G.home].mk] = true;  // домашний рынок открыт с первого дня
     PRJ_CPU = Proj();
     PRJ_OS = Proj();
-    for (int i = 0; i < NCOMP; ++i) G.comp[i] = 900.0 * std::pow(0.85, i) * (0.9 + 0.2 * frand());
+    for (int i = 0; i < NCOMP; ++i) G.comp[i] = COMP_START * std::pow(COMP_STEP, i) * (0.8 + 0.4 * frand());
+    rollCompLuck();
+    syncCompNames();
     OS_OPT[1].q = 0;
     CPUSRC_OPT[1].q = 0;
     G.company = name.empty() ? "Device Corp" : name;
@@ -2130,8 +2169,11 @@ void newGame(const std::string& name, int capIdx, int home = 0) {
     G.techDone.assign(TECHS.size(), 0);
     G.trend = irand(0, 7);
     refreshCandidates();
+    // Планшету нужен экран: простейшая панель известна с самого начала
+    if (techFor[P_SCREEN][1] >= 0 && techFor[P_SCREEN][1] < (int)G.techDone.size()) G.techDone[(size_t)techFor[P_SCREEN][1]] = 1;
     G.draft.cat = 0;
     G.draft.p[P_SIZE] = CATS[0].idealSize;
+    G.draft.p[P_SCREEN] = 1;
     G.draft.price = CATS[0].defPrice;
     batchChoice = -1;
     logMsg("Компания «" + G.company + "» основана! Регион производства: " + REGS[G.home].name);
@@ -2220,6 +2262,150 @@ void checkGoal() {
 // ---------------------------------------------------------------------------
 //  Симуляция
 // ---------------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------------
+//  Репутация: не случайное число, а сумма понятных слагаемых.
+//  Каждый месяц она на 7% приближается к «заслуженному» уровню.
+// ---------------------------------------------------------------------------
+const int SERVICE_MAX = 4;
+double serviceCost(int lvl) { return ic(40000.0 * std::pow(3.0, lvl)); }       // цена следующего уровня
+double serviceUpkeep() { return G.service > 0 ? ic(1500.0 * std::pow(2.0, G.service - 1)) : 0.0; }
+struct RepPart {
+    double rating = 0, fans = 0, awards = 0, service = 0, region = 0, defect = 0, total = 0;
+    double avgRating = 0, avgDefect = 0;
+    int models = 0, awardCount = 0;
+};
+RepPart repBreakdown() {
+    RepPart r;
+    // Качество: средняя оценка моделей за последние 3 года (чем больше продано, тем больше вес)
+    double sw = 0, sr = 0, dw = 0, ds = 0;
+    for (size_t i = 0; i < G.products.size(); ++i) {
+        const Product& p = G.products[i];
+        if (G.day - p.launchDay <= 1080) {
+            double w = std::max(100.0, p.units);
+            sw += w; sr += w * p.rating;
+            ++r.models;
+        }
+        if (p.onSale) { double w = std::max(100.0, p.units); dw += w; ds += w * p.defect; }
+    }
+    if (sw > 0) { r.avgRating = sr / sw; r.rating = clampd((r.avgRating - 3.0) * 10.5, 0.0, 62.0); }
+    r.fans = clampd(6.5 * std::log10(1.0 + G.fans / 1000.0), 0.0, 20.0);
+    for (size_t i = 0; i < G.awardLog.size(); ++i)
+        if (G.awardLog[i].owner < 0 && G.awardLog[i].year >= calYear() - 3) ++r.awardCount;
+    r.awards = std::min(12.0, 3.0 * r.awardCount);
+    r.service = 2.0 * G.service;
+    r.region = REGS[G.home].rep;
+    if (dw > 0) { r.avgDefect = ds / dw; r.defect = clampd((r.avgDefect - 0.05) * 200.0, 0.0, 15.0); }
+    r.total = clampd(r.rating + r.fans + r.awards + r.service + r.region - r.defect, 0.0, 100.0);
+    return r;
+}
+// Лучшее качество варианта параметра, доступное в данном году
+double eraBestQ(int p, int year) {
+    double q = 0;
+    for (int t = 0; t < optCount(p); ++t) {
+        if ((p == P_OS || p == P_CPUSRC) && t == 1) continue;
+        if (t > 0 && PARAM_YEAR[p][t] > year) continue;
+        q = std::max(q, opt(p, t).q);
+    }
+    return q;
+}
+// Что обозреватели хвалят и ругают: параметры на уровне лучших в своём году и заметно отстающие
+void reviewPoints(const Product& p, std::string& pros, std::string& cons) {
+    const int year = START_YEAR + p.launchDay / 360;
+    const Cat& c = CATS[p.cat];
+    struct It { double w; int p; };
+    std::vector<It> good, bad;
+    for (int k = P_SCREEN; k < NPARAM; ++k) {
+        if (c.w[k] <= 0 || !paramLive(k, year)) continue;
+        double best = eraBestQ(k, year);
+        if (best <= 0) continue;
+        double ratio = opt(k, p.p[k]).q / best;
+        if (ratio >= 0.9) good.push_back({c.w[k], k});
+        else if (ratio <= 0.5) bad.push_back({c.w[k], k});
+    }
+    auto cmp = [](const It& a, const It& b) { return a.w > b.w; };
+    std::sort(good.begin(), good.end(), cmp);
+    std::sort(bad.begin(), bad.end(), cmp);
+    pros.clear(); cons.clear();
+    for (size_t i = 0; i < good.size() && i < 3; ++i) pros += (i ? ", " : "") + std::string(PARAM_NAMES[good[i].p]);
+    for (size_t i = 0; i < bad.size() && i < 3; ++i) cons += (i ? ", " : "") + std::string(PARAM_NAMES[bad[i].p]);
+    if (p.defect > 0.07) cons += std::string(cons.empty() ? "" : ", ") + "брак";
+}
+
+// ---------------------------------------------------------------------------
+//  Жизнь конкурентов: взлёты, скандалы, поглощения и банкротства
+// ---------------------------------------------------------------------------
+void syncCompNames() {
+    for (int i = 0; i < NCOMP; ++i) COMP_NAMES[i] = NAME_POOL[clampi(G.compName[i], 0, NNAME - 1)];
+}
+void rollCompLuck() {
+    for (int i = 0; i < NCOMP; ++i) G.compLuck[i] = 0.45 + 1.25 * frand();  // у каждой фирмы бывают удачные и провальные годы
+}
+// Фирма i уходит с рынка, на её место приходит новичок с новым названием
+void replaceRival(int i) {
+    for (size_t k = 0; k < G.rivals.size();)
+        if (G.rivals[k].comp == i) G.rivals.erase(G.rivals.begin() + (long)k);
+        else ++k;
+    for (size_t k = 0; k < G.awardLog.size(); ++k)
+        if (G.awardLog[k].owner == i) G.awardLog[k].owner = NCOMP;  // награды остаются в истории за ушедшей фирмой
+    // следующее название из пула, которое сейчас никто не носит
+    for (int tries = 0; tries < NNAME; ++tries) {
+        int cand = G.nameNext % NNAME;
+        G.nameNext = (G.nameNext + 1) % NNAME;
+        bool used = false;
+        for (int k = 0; k < NCOMP; ++k) if (k != i && G.compName[k] == cand) used = true;
+        if (!used && cand != G.compName[i]) { G.compName[i] = cand; break; }
+    }
+    double avg = 0;
+    for (int k = 0; k < NCOMP; ++k) avg += G.comp[k];
+    avg /= NCOMP;
+    G.comp[i] = avg * (0.15 + 0.25 * frand());
+    G.rivalProfit[i] = 0;
+    G.compLuck[i] = 0.9 + 0.9 * frand();  // новички голодные
+    if (G.suit.active && G.suit.rival == i) G.suit.active = false;  // истец исчез — иск закрыт
+    syncCompNames();
+}
+// Раз в месяц на рынке может что-то случиться
+void rivalNews() {
+    if (frand() > 0.14) return;
+    int order[NCOMP];
+    for (int i = 0; i < NCOMP; ++i) order[i] = i;
+    std::sort(order, order + NCOMP, [](int a, int b) { return G.comp[a] > G.comp[b]; });
+    double r = frand();
+    if (r < 0.40) {
+        // взлёт: чаще у тех, кто не в лидерах
+        int i = order[irand(2, NCOMP - 1)];
+        static const char* const why[4] = {"выпустила хит продаж", "заключила крупный контракт", "получила инвестиции",
+                                           "удачно вышла на новые рынки"};
+        G.comp[i] *= 1.3 + 0.4 * frand();
+        G.compLuck[i] = std::min(2.2, G.compLuck[i] + 0.5);
+        logMsg(std::string(COMP_NAMES[i]) + " " + why[irand(0, 3)] + ": её доля рынка растёт");
+    } else if (r < 0.75) {
+        // провал: бьёт по лидерам
+        int i = order[irand(0, 5)];
+        static const char* const why[4] = {"Скандал с браком", "Срыв поставок", "Провал новой модели", "Утечка данных"};
+        G.comp[i] *= 0.6 + 0.2 * frand();
+        G.compLuck[i] = std::max(0.2, G.compLuck[i] - 0.5);
+        logMsg(std::string(why[irand(0, 3)]) + " в " + COMP_NAMES[i] + ": компания теряет покупателей");
+    } else if (r < 0.90) {
+        // банкротство одного из слабейших
+        int i = order[irand(NCOMP - 6, NCOMP - 1)];
+        std::string old = COMP_NAMES[i];
+        replaceRival(i);
+        logMsg(old + " обанкротилась. На рынок выходит новичок: " + COMP_NAMES[i]);
+        toast(old + " обанкротилась");
+    } else {
+        // поглощение: сильная фирма покупает слабую
+        int a = order[irand(0, 7)], b = order[irand(NCOMP - 8, NCOMP - 1)];
+        if (a == b) return;
+        std::string old = COMP_NAMES[b];
+        G.comp[a] += 0.7 * G.comp[b];
+        replaceRival(b);
+        logMsg(std::string(COMP_NAMES[a]) + " поглотила " + old + ". Вместо неё появился стартап " + COMP_NAMES[b]);
+    }
+}
+
 // Конкурент выпускает новую модель
 void rivalRelease() {
     int open[NCAT], no = 0;
@@ -2239,18 +2425,20 @@ void rivalRelease() {
     double top = 1.0;
     for (int i = 0; i < NCOMP; ++i) top = std::max(top, G.comp[i]);
     // сильные компании делают устройства лучше, но разброс велик
-    r.rating = std::round(clampd(3.2 + 3.6 * frand() + 2.2 * std::sqrt(G.comp[r.comp] / top), 1.0, 9.5) * 10.0) / 10.0;
+    // оценка: случай, размер фирмы и её удача в этом году — хит может выпустить и небольшая компания
+    r.rating = std::round(clampd(3.2 + 3.6 * frand() + 1.2 * std::sqrt(G.comp[r.comp] / top) +
+                                 1.0 * clampd(G.compLuck[r.comp] / 1.7, 0.0, 1.0), 1.0, 9.5) * 10.0) / 10.0;
     double typ = CATS[r.cat].defPrice * G.infl * std::pow(1.035, years());
     r.price = std::max(5, (int)(typ * (0.6 + 0.08 * r.rating) * (0.9 + 0.2 * frand()) / 5.0) * 5);
     r.launchDay = G.day;
     r.num = calYear() % 100;  // модель называется по году выпуска
     G.rivals.push_back(r);
-    G.comp[r.comp] *= 1.03;
+    G.comp[r.comp] *= 1.004;  // новинка слегка подстёгивает продажи
     logMsg("Новинка: " + rprodName(r) + " (оценка " + fmt1(r.rating) + ", $" + fmtNum(r.price) + ")");
 }
 
 void monthEnd() {
-    double cost = salaries() + officeRent() + factUpkeep() + supFee(G.supplier);
+    double cost = salaries() + officeRent() + factUpkeep() + supFee(G.supplier) + serviceUpkeep();
     // Проценты по кредиту
     cost += G.loan * loanRate() / 12.0;
     // Хранение склада: 1% себестоимости остатков в месяц
@@ -2265,9 +2453,28 @@ void monthEnd() {
     if (G.histInc.size() > 36) { G.histInc.erase(G.histInc.begin()); G.histExp.erase(G.histExp.begin()); }
     G.monInc = 0; G.monExp = 0;
     refreshCandidates();
-    G.rep = std::max(0.0, G.rep * 0.985);
-    for (int i = 0; i < NCOMP; ++i) G.comp[i] *= 1.0 + 0.01 + 0.02 * frand();
-    for (int i = 0; i < NCOMP; ++i) G.rivalProfit[i] += G.comp[i] * 6.0 * G.infl * (0.6 + 0.8 * frand());
+    // Репутация постепенно приходит к уровню, который компания заслужила
+    G.rep = clampd(G.rep + (repBreakdown().total - G.rep) * 0.07, 0.0, 100.0);
+    // Рост у всех разный: кто-то месяц проседает, кто-то вырывается вперёд
+    // и чем крупнее фирма относительно рынка, тем труднее ей расти: вечных лидеров не бывает
+    {
+        double lg = 0;
+        for (int i = 0; i < NCOMP; ++i) lg += std::log(std::max(1.0, G.comp[i]));
+        lg /= NCOMP;
+        // Когда игрок забирает слишком большую долю рынка, конкуренты мобилизуются и растут быстрее
+        double tot = 0;
+        for (int i = 0; i < NCOMP; ++i) tot += G.comp[i];
+        double pl = (G.histInc.empty() ? 0.0 : G.histInc.back()) / 1000.0 / std::max(0.01, G.infl);
+        double share = pl / std::max(1.0, pl + tot);
+        double push = 0.035 * clampd((share - 0.2) / 0.2, 0.0, 1.5);
+        for (int i = 0; i < NCOMP; ++i) {
+            double rel = std::log(std::max(1.0, G.comp[i])) - lg;  // >0 — крупнее среднего
+            G.comp[i] *= 1.0 + COMP_GROWTH + push + 0.07 * (frand() - 0.5) - 0.02 * clampd(rel, -2.0, 2.0);
+        }
+    }
+    // Сила конкурента = его выручка в месяц в тысячах долларов 1960 года; прибыль — 2–18% от неё
+    for (int i = 0; i < NCOMP; ++i) G.rivalProfit[i] += G.comp[i] * 1000.0 * G.infl * (0.02 + 0.16 * frand()) * G.compLuck[i];
+    rivalNews();
 
     // Распад СССР: Казахстан и Беларусь становятся отдельными рынками
     if (!G.ussrSplit && calYear() >= 1992) {
@@ -2286,7 +2493,11 @@ void monthEnd() {
     for (size_t i = 0; i < G.staff.size();) {
         Staff& st = G.staff[i];
         int drop = std::max(2, 6 - G.office) + (G.crunch ? 8 : 0) + (st.ask > 0 ? 8 : 0);
-        st.mood = std::max(10, st.mood - drop);
+        const int moodBefore = st.mood;
+        // Без аврала и невыполненных просьб настроение само возвращается к спокойному уровню
+        if (!G.crunch && st.ask == 0 && st.mood < 65) st.mood = std::min(65, st.mood + 3);
+        else st.mood = std::max(10, st.mood - drop);
+        if (moodBefore >= 40 && st.mood < 40) logMsg(st.name + ": настроение на нуле, может уволиться. Помогут премия или корпоратив");
         st.xp += busy ? 2 : 1;
         if (st.skill < 10 && st.xp >= 10 + 6 * st.skill) {
             st.skill++;
@@ -2299,10 +2510,15 @@ void monthEnd() {
             logMsg(st.name + " просит поднять оклад до " + fmtMoney(st.ask));
         }
         if (st.ask > 0 && st.salary >= st.ask) st.ask = 0;
-        double pc = st.skill >= 5 ? (st.mood < 40 ? 0.12 : 0.04) : (st.mood < 25 ? 0.08 : 0.0);
+        // Уходят только по причине: плохое настроение или долгое ожидание прибавки. Довольные остаются.
+        double pc = 0;
+        const char* why = "";
+        if (st.mood < 25) { pc = 0.15; why = "совсем плохое настроение"; }
+        else if (st.mood < 40) { pc = st.skill >= 5 ? 0.08 : 0.04; why = "плохое настроение"; }
+        else if (st.ask > 0 && st.skill >= 5) { pc = 0.03; why = "не дождался прибавки"; }
         if (frand() < pc) {
-            logMsg(st.name + " ушёл к конкурентам");
-            toast(st.name + " ушёл к конкурентам");
+            logMsg(st.name + " уходит к конкурентам: " + why);
+            toast(st.name + " уходит: " + why);
             sfx(SFX_BAD);
             G.staff.erase(G.staff.begin() + (long)i);
         } else {
@@ -2425,6 +2641,7 @@ void yearEnd() {
 
 
 std::vector<Award> yearAwards;
+std::vector<std::pair<double, std::string>> yearPods;  // прибыль компаний за год для пьедестала
 int awardYearNo = 0;
 float ceremonyT = 0.0f;  // время церемонии награждения, сек
 
@@ -2436,7 +2653,7 @@ void computeAwards(int y) {  // y — номер нового года от ст
     ceremonyT = 0.0f;
     awardYearNo = START_YEAR + y - 1;
     const int from = (y - 1) * 360, to = y * 360;
-    const char* titles[NCAT] = {"Лучший радиоприёмник года", "Лучший телефон года", "Лучшие часы года",
+    const char* titles[NCAT] = {"Лучший планшет года", "Лучший телефон года", "Лучшие часы года",
                                 "Лучший калькулятор года", "Лучший компьютер года"};
     auto add = [&](const char* title, const std::string& winner, int owner, const std::string& detail) {
         Award a;
@@ -2456,6 +2673,12 @@ void computeAwards(int y) {  // y — номер нового года от ст
         if (G.rivalProfit[i] > top) { top = G.rivalProfit[i]; topName = COMP_NAMES[i]; topOwner = i; }
     if (top > 0)
         add("Лучшая компания года", topName, topOwner, "Прибыль за год " + fmtMoney(top));
+    // Пьедестал церемонии строится по тем же цифрам, что и награда (ниже прибыль конкурентов обнуляется)
+    yearPods.clear();
+    yearPods.push_back(std::make_pair(profit, G.company));
+    for (int i = 0; i < NCOMP; ++i) yearPods.push_back(std::make_pair(G.rivalProfit[i], std::string(COMP_NAMES[i])));
+    std::sort(yearPods.begin(), yearPods.end(),
+              [](const std::pair<double, std::string>& x, const std::pair<double, std::string>& z) { return x.first > z.first; });
 
     // Лучшее устройство в каждой открытой категории: игрок против конкурентов
     for (int c = 0; c < NCAT; ++c) {
@@ -2492,18 +2715,22 @@ void computeAwards(int y) {  // y — номер нового года от ст
         if (p.launchDay < from || p.launchDay >= to) continue;
         if (p.units > bu) { bu = p.units; bsn = p.name; bsOwner = -1; bsd = "Продано " + fmtNum(p.units) + " шт."; }
     }
-    for (int i = 0; i < NCOMP; ++i) {
-        double u = G.comp[i] * 200.0 * (0.5 + frand());
+    // у конкурентов продажи зависят от размера фирмы, оценки модели и удачи года
+    for (size_t i = 0; i < G.rivals.size(); ++i) {
+        const RProd& rp = G.rivals[i];
+        if (rp.launchDay < from || rp.launchDay >= to) continue;
+        double u = std::floor(G.comp[rp.comp] * 70.0 * std::pow(rp.rating / 5.0, 2.0) * G.compLuck[rp.comp] * (0.6 + 0.8 * frand()));
         if (u > bu) {
-            bu = u; bsOwner = i;
-            bsn = std::string(COMP_NAMES[i]) + " " + CATS[0].series + " " + SUFFIX[i % 10];
+            bu = u; bsOwner = rp.comp;
+            bsn = rprodName(rp);
             bsd = "Продано " + fmtNum(u) + " шт.";
         }
     }
     if (bu >= 0) add("Самое продаваемое устройство года", bsn, bsOwner, bsd);
 
-    // Годовая прибыль конкурентов начинается заново
+    // Годовая прибыль конкурентов начинается заново, удача на новый год — тоже
     for (int i = 0; i < NCOMP; ++i) G.rivalProfit[i] = 0;
+    rollCompLuck();
 }
 
 void announceYear(int y) {
@@ -2560,7 +2787,6 @@ void tickProjects() {
 void tickDay() {
     G.day++;
     if (G.evDays > 0) G.evDays--;
-    if (G.day > 0 && G.day % 360 == 0) announceYear(G.day / 360);
     if (G.researching >= 0) {
         G.researchProg += researchRate();
         const Tech& t = TECHS[(size_t)G.researching];
@@ -2630,7 +2856,7 @@ void tickDay() {
         double rev = whole * p.price;
         double duty = rev * p.tariffNow;                          // пошлины стран
         double ret = whole * p.defect;                            // гарантийные возвраты
-        double warr = ret * unitProdCost(p) * 0.8;
+        double warr = ret * unitProdCost(p) * 0.8 * (1.0 - 0.15 * G.service);  // свой сервис чинит дешевле
         p.returns += ret;
         p.units += whole; p.revenue += rev; p.profit += rev - duty - warr; p.lastDay = whole; p.weekAcc += whole;
         G.money += rev - duty - warr;
@@ -2680,6 +2906,8 @@ void tickDay() {
         logMsg("Новый год! Модный цвет: " + std::string(COLOR_OPT[G.trend].name));
         toast("Новый год! Ожидания рынка выросли.");
         yearEnd();
+        // Итоги года подводятся после закрытия декабря, чтобы в них вошли все 12 месяцев
+        if (screen != SC_OVER) announceYear(G.day / 360);
     }
 }
 
@@ -2766,7 +2994,7 @@ bool saveGame() {
     if (savePath.empty()) return false;
     std::ostringstream o;
     o.precision(17);
-    o << "DEVCORP7";
+    o << "DEVCORP10";
     wstr(o, G.company);
     o << G.money << ' ' << G.rep << ' ' << G.fans << ' ' << G.day << ' ' << G.speed << ' ' << G.office << ' '
       << G.hype << ' ' << G.trend << ' ' << G.negMonths << ' ' << G.monInc << ' ' << G.monExp << ' '
@@ -2829,7 +3057,9 @@ bool saveGame() {
     // ---- Блок версии 3: склад, брак, финансы, снабжение, слоты, конкуренты
     o << G.infl << ' ' << G.lastInfl << ' ' << G.loan << ' ' << G.stake << ' ' << (G.ipo ? 1 : 0) << ' ' << G.lastTax
       << ' ' << G.lastDiv << ' ' << G.supplier << ' ' << G.supUntil << ' ' << G.supHalt << ' ' << G.prodToday << ' '
-      << (G.crunch ? 1 : 0) << ' ' << (G.ussrSplit ? 1 : 0) << ' ' << (G.slot[0].crunch ? 1 : 0) << ' ' << G.home << ' ' << G.goal << ' ' << G.osLic << '\n';
+      << (G.crunch ? 1 : 0) << ' ' << (G.ussrSplit ? 1 : 0) << ' ' << (G.slot[0].crunch ? 1 : 0) << ' ' << G.home << ' ' << G.goal << ' ' << G.osLic << ' ' << G.nameNext << ' ' << G.service;
+    for (int i = 0; i < NCOMP; ++i) o << ' ' << G.compName[i] << ' ' << G.compLuck[i];
+    o << '\n';
     for (int l = 0; l < 2; ++l)
         for (size_t i = 0; i < lists[l]->size(); ++i) o << (*lists[l])[i].xp << ' ' << (*lists[l])[i].ask << ' ';
     o << '\n';
@@ -2873,9 +3103,9 @@ bool loadGame() {
     std::istringstream is(data);
     std::string magic;
     is >> magic;
-    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5" && magic != "DEVCORP6" && magic != "DEVCORP7") return false;
+    if (magic != "DEVCORP2" && magic != "DEVCORP3" && magic != "DEVCORP4" && magic != "DEVCORP5" && magic != "DEVCORP6" && magic != "DEVCORP7" && magic != "DEVCORP8" && magic != "DEVCORP9" && magic != "DEVCORP10") return false;
     const bool v3 = magic != "DEVCORP2", v4 = v3 && magic != "DEVCORP3", v5 = v4 && magic != "DEVCORP4",
-               v6 = v5 && magic != "DEVCORP5", v7 = v6 && magic != "DEVCORP6";
+               v6 = v5 && magic != "DEVCORP5", v7 = v6 && magic != "DEVCORP6", v8 = v7 && magic != "DEVCORP7", v9 = v8 && magic != "DEVCORP8", v10 = v9 && magic != "DEVCORP9";
     const int npar = v6 ? NPARAM : NPARAM_OLD;  // в старых файлах параметров меньше  // старые сохранения тоже читаются
     Game g;
     float vol = A.vol;
@@ -2957,6 +3187,7 @@ bool loadGame() {
     for (size_t i = 0; i < na && i < 100000; ++i) {
         Award a;
         is >> a.year >> a.owner;
+        a.owner = clampi(a.owner, -1, NCOMP);
         if (!rstr(is, a.title) || !rstr(is, a.winner) || !rstr(is, a.detail)) break;
         g.awardLog.push_back(a);
     }
@@ -2977,6 +3208,16 @@ bool loadGame() {
         if (v4) { is >> g.home; g.home = clampi(g.home, 0, NREG - 1); }
         if (v5) { is >> g.goal; g.goal = clampi(g.goal, 0, NGOAL); }
         if (v7) is >> g.osLic;
+        if (v8) {
+            is >> g.nameNext;
+            if (v10) { is >> g.service; g.service = clampi(g.service, 0, 4); }
+            for (int i = 0; i < NCOMP; ++i) {
+                is >> g.compName[i] >> g.compLuck[i];
+                g.compName[i] = clampi(g.compName[i], 0, NNAME - 1);
+                g.compLuck[i] = clampd(g.compLuck[i], 0.1, 3.0);
+            }
+            g.nameNext = clampi(g.nameNext, 0, NNAME - 1);
+        }
         g.ipo = ipo != 0; g.crunch = crunch != 0; g.ussrSplit = split != 0; g.slot[0].crunch = c0 != 0;
         for (int l = 0; l < 2; ++l)
             for (size_t i = 0; i < lists[l]->size(); ++i) is >> (*lists[l])[i].xp >> (*lists[l])[i].ask;
@@ -3050,6 +3291,16 @@ bool loadGame() {
     // До версии 7 лицензии были бесплатными: всё, что уже вышло к году сохранения, считается купленным
     if (!v7) { G.osLic = 0; for (int t = 2; t < 7; ++t) if (calYear() >= PARAM_YEAR[P_OS][t]) G.osLic |= 1 << t; }
     G.osLic &= 0x7C;
+    syncCompNames();
+    // В прежних версиях конкуренты росли слишком быстро: приводим их размер к разумному для этого года
+    if (!v9) {
+        double tot = 0;
+        for (int i = 0; i < NCOMP; ++i) tot += G.comp[i];
+        const double tgt = compTarget(G.day);
+        if (tot > 1.5 * tgt) {
+            for (int i = 0; i < NCOMP; ++i) { G.comp[i] *= tgt / tot; G.rivalProfit[i] = 0; }
+        }
+    }
     if (!v5) { G.goal = 0; while (G.goal < NGOAL && goalMet(G.goal)) G.goal++; }
     shownMoney = G.money;
     parts.clear();
@@ -3074,74 +3325,127 @@ void drawDevice(int cx, int cy, int cat, int size, int color, int scrTier, int c
     Col dark = {18, 22, 30, 255};
     Col scrC = {(Uint8)(20 + scrTier * 10), (Uint8)(40 + scrTier * 22), (Uint8)(80 + scrTier * 28), 255};
     double s = 0.85 + 0.12 * size;
-    static const int catShape[5] = {3, 0, 2, 3, 4};  // радио и калькулятор — короб, телефон — вертикальный
-    switch (catShape[cat]) {
-        case 0: {
-            int w = (int)(80 * s), h = (int)(160 * s);
+    const bool hasScreen = scrTier > 1;  // scrTier = вариант экрана + 1
+    switch (cat) {
+        case 0: {  // планшет
+            int w = (int)(220 * s), h = (int)(150 * s);
             SDL_Rect b = {cx - w / 2, cy - h / 2, w, h};
-            fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 14, edge);
-            fillRound(b, 12, body);
-            fillRound({b.x + 6, b.y + 16, w - 12, h - 32}, 6, scrC);
-            fillRect(b.x + 10, b.y + 22, (w - 20) / 2, 3, shade(scrC, 1.5));
-            fillCircle(cx, b.y + 8, 3, dark);
-            fillRound({cx - 12, b.y + h - 11, 24, 5}, 2, edge);
+            fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 16, edge);
+            fillRound(b, 14, body);
+            fillRound({b.x + 12, b.y + 12, w - 24, h - 24}, 6, hasScreen ? scrC : dark);
+            if (hasScreen) {
+                fillRect(b.x + 20, b.y + 20, w / 3, 3, shade(scrC, 1.5));
+                fillRect(b.x + 20, b.y + 30, w / 4, 3, shade(scrC, 1.5));
+            }
+            fillCircle(b.x + w / 2, b.y + 6, 2, dark);
             break;
         }
         case 1: {
-            int rad = (int)(70 * s);
-            for (int a = 180; a <= 360; a += 4) {
-                double ang = a * 3.14159265 / 180.0;
-                fillCircle(cx + (int)(std::cos(ang) * rad), cy + (int)(std::sin(ang) * rad), 7, edge);
+            if (!hasScreen) {  // телефон без экрана: аппарат с трубкой и диском
+                int w = (int)(190 * s), h = (int)(110 * s);
+                SDL_Rect b = {cx - w / 2, cy - h / 2 + 30, w, h};
+                fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 22, edge);
+                fillRound(b, 20, body);
+                int dr = (int)(38 * s);
+                fillCircle(cx, b.y + h / 2 + 4, dr, shade(body, 1.2));
+                fillCircle(cx, b.y + h / 2 + 4, dr - 4, dark);
+                for (int i = 0; i < 10; ++i) {
+                    double ang = (i * 30 - 60) * 3.14159265 / 180.0;
+                    fillCircle(cx + (int)(std::cos(ang) * (dr - 13)), b.y + h / 2 + 4 + (int)(std::sin(ang) * (dr - 13)), 4, shade(body, 1.2));
+                }
+                fillCircle(cx, b.y + h / 2 + 4, (int)(10 * s), body);
+                // трубка на рычагах
+                int tw = (int)(230 * s);
+                fillRect(cx - w / 4 - 5, b.y - 16, 10, 18, edge);
+                fillRect(cx + w / 4 - 5, b.y - 16, 10, 18, edge);
+                fillRound({cx - tw / 2, b.y - 40, tw, 22}, 11, body);
+                fillRound({cx - tw / 2 - 4, b.y - 44, 46, 40}, 14, body);
+                fillRound({cx + tw / 2 - 42, b.y - 44, 46, 40}, 14, body);
+                fillRound({cx - tw / 2 + 4, b.y - 14, 30, 6}, 3, dark);
+                fillRound({cx + tw / 2 - 34, b.y - 14, 30, 6}, 3, dark);
+                camN = 0;
+            } else {  // телефон с экраном
+                int w = (int)(80 * s), h = (int)(160 * s);
+                SDL_Rect b = {cx - w / 2, cy - h / 2, w, h};
+                fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 14, edge);
+                fillRound(b, 12, body);
+                if (scrTier >= 6) {  // цветной ЖК: экран во всю панель
+                    fillRound({b.x + 6, b.y + 16, w - 12, h - 32}, 6, scrC);
+                    fillRect(b.x + 10, b.y + 22, (w - 20) / 2, 3, shade(scrC, 1.5));
+                    fillRound({cx - 12, b.y + h - 11, 24, 5}, 2, edge);
+                } else {  // ранние модели: маленький экран и кнопки
+                    fillRound({b.x + 8, b.y + 18, w - 16, h / 3}, 4, scrC);
+                    for (int r = 0; r < 4; ++r)
+                        for (int c = 0; c < 3; ++c)
+                            fillRound({b.x + 10 + c * (w - 20) / 3, b.y + h / 3 + 28 + r * (h / 2 - 20) / 4, (w - 20) / 3 - 4, (h / 2 - 20) / 4 - 4}, 2, dark);
+                }
+                fillCircle(cx, b.y + 8, 3, dark);
             }
-            for (int a = 180; a <= 360; a += 4) {
-                double ang = a * 3.14159265 / 180.0;
-                fillCircle(cx + (int)(std::cos(ang) * rad), cy + (int)(std::sin(ang) * rad), 5, body);
-            }
-            int cw = (int)(38 * s), ch = (int)(74 * s);
-            fillRound({cx - rad - cw / 2, cy - 8, cw, ch}, 14, body);
-            fillRound({cx + rad - cw / 2, cy - 8, cw, ch}, 14, body);
-            fillRound({cx - rad + cw / 2 - 6, cy + 2, 8, ch - 20}, 3, dark);
-            fillRound({cx + rad - cw / 2 - 2, cy + 2, 8, ch - 20}, 3, dark);
             break;
         }
-        case 2: {
+        case 2: {  // наручные часы
             int w = (int)(96 * s), h = (int)(112 * s);
             fillRect(cx - w / 3, cy - 120, w * 2 / 3, 240, edge);
             for (int i = 0; i < 5; ++i) fillRect(cx - 3, cy + h / 2 + 10 + i * 12, 6, 6, dark);
             fillRound({cx - w / 2, cy - h / 2, w, h}, 18, body);
-            fillRound({cx - w / 2 + 8, cy - h / 2 + 8, w - 16, h - 16}, 12, scrC);
             fillRect(cx + w / 2, cy - 10, 6, 20, edge);
-            drawTextC("12:00", cx, cy - 7, 2, C_TEXT);
+            if (hasScreen) {
+                fillRound({cx - w / 2 + 8, cy - h / 2 + 8, w - 16, h - 16}, 12, scrC);
+                drawTextC("12:00", cx, cy - 7, 2, C_TEXT);
+            } else {  // без экрана — циферблат со стрелками
+                int r = std::min(w, h) / 2 - 8;
+                fillCircle(cx, cy, r, {236, 232, 216, 255});
+                for (int i = 0; i < 12; ++i) {
+                    double ang = i * 30 * 3.14159265 / 180.0;
+                    fillCircle(cx + (int)(std::cos(ang) * (r - 6)), cy + (int)(std::sin(ang) * (r - 6)), 2, dark);
+                }
+                fillRect(cx - 2, cy - r + 14, 4, r - 14, dark);
+                fillRect(cx, cy - 2, r - 18, 4, dark);
+                fillCircle(cx, cy, 4, {206, 40, 48, 255});
+            }
             break;
         }
-        case 3: {
-            int w = (int)(240 * s), h = (int)(160 * s);
+        case 3: {  // калькулятор: дисплей и клавиши
+            int w = (int)(120 * s), h = (int)(170 * s);
             SDL_Rect b = {cx - w / 2, cy - h / 2, w, h};
-            fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 16, edge);
-            fillRound(b, 14, body);
-            fillRound({b.x + 12, b.y + 12, w - 24, h - 24}, 6, scrC);
-            fillRect(b.x + 18, b.y + 18, w / 3, 3, shade(scrC, 1.5));
-            fillCircle(b.x + w / 2, b.y + 6, 2, dark);
+            fillRound({b.x - 2, b.y - 2, b.w + 4, b.h + 4}, 12, edge);
+            fillRound(b, 10, body);
+            int dh = (int)(34 * s);
+            fillRound({b.x + 10, b.y + 12, w - 20, dh}, 4, hasScreen ? scrC : dark);
+            drawTextR("1960", b.x + w - 16, b.y + 12 + dh / 2 - 7, 2, hasScreen ? C_TEXT : Col{255, 120, 60, 255});
+            int kw = (w - 20) / 4, kh = (h - dh - 34) / 5;
+            for (int r = 0; r < 5; ++r)
+                for (int c = 0; c < 4; ++c) {
+                    Col kc = (c == 3) ? Col{206, 110, 40, 255} : dark;
+                    fillRound({b.x + 10 + c * kw + 2, b.y + dh + 22 + r * kh + 2, kw - 4, kh - 4}, 3, kc);
+                }
             break;
         }
-        default: {
-            int w = (int)(250 * s), h = (int)(150 * s);
-            SDL_Rect lid = {cx - w / 2, cy - h / 2 - 20, w, h};
-            fillRound(lid, 10, body);
-            fillRect(lid.x + 10, lid.y + 10, w - 20, h - 20, scrC);
-            fillRect(lid.x + 16, lid.y + 16, w / 3, 3, shade(scrC, 1.5));
-            int by = lid.y + h;
-            fillRect(lid.x - 20, by, w + 40, (int)(14 * s), edge);
-            fillRect(lid.x - 20, by, w + 40, 4, body);
-            fillRect(cx - 30, by + 4, 60, 4, shade(edge, 0.8));
+        default: {  // компьютер: монитор, подставка и клавиатура
+            int w = (int)(190 * s), h = (int)(130 * s);
+            SDL_Rect m = {cx - w / 2, cy - h / 2 - 34, w, h};
+            fillRound({m.x - 2, m.y - 2, m.w + 4, m.h + 4}, 12, edge);
+            fillRound(m, 10, body);
+            fillRound({m.x + 12, m.y + 12, w - 24, h - 30}, 6, scrC);
+            fillRect(m.x + 20, m.y + 22, w / 3, 3, shade(scrC, 1.5));
+            fillRect(m.x + 20, m.y + 32, w / 4, 3, shade(scrC, 1.5));
+            fillCircle(m.x + w - 18, m.y + h - 10, 3, {60, 210, 120, 255});
+            fillRect(cx - 16, m.y + h, 32, 14, edge);
+            fillRound({cx - 50, m.y + h + 12, 100, 8}, 3, edge);
+            int ky = m.y + h + 30, kw = (int)(230 * s);
+            fillRound({cx - kw / 2, ky, kw, 34}, 6, body);
+            for (int r = 0; r < 3; ++r)
+                for (int c = 0; c < 12; ++c) fillRect(cx - kw / 2 + 8 + c * (kw - 16) / 12, ky + 5 + r * 9, (kw - 16) / 12 - 3, 6, dark);
             break;
         }
     }
-    // Камеры: количество и размер линз зависят от настроек
-    if (camN > 0) {
+    // Камеры есть у планшета, телефона и компьютера: количество и размер линз зависят от настроек
+    if (camN > 0 && cat != 2 && cat != 3) {
         int rad = 4 + camSz * 2;
+        int top = cat == 1 ? cy - (int)(80 * s) + 30 : (cat == 0 ? cy - (int)(75 * s) + 24 + rad : cy - (int)(65 * s) - 34 - 2 * rad);
+        int left = cat == 1 ? cx - (int)(40 * s) + 12 + rad : (cat == 0 ? cx - (int)(110 * s) + 24 + rad : cx - (camN - 1) * (rad + 4));
         for (int i = 0; i < camN; ++i) {
-            int x = cx - 30 + i * (2 * rad + 8), y = cy - 62;
+            int x = left + (cat == 1 ? (i % 2) : i) * (2 * rad + 6), y = top + (cat == 1 ? (i / 2) * (2 * rad + 6) : 0);
             fillCircle(x, y, rad + 2, {60, 60, 70, 255});
             fillCircle(x, y, rad, {20, 40, 70, 255});
             fillCircle(x - rad / 3, y - rad / 3, std::max(1, rad / 4), {120, 170, 230, 255});
@@ -3186,8 +3490,12 @@ void goBack() {
 }
 
 void topBar() {
-    fillRect(0, 0, W, 64, C_PANEL2);
-    fillRect(0, 63, W, 1, C_BORDER);
+    fillGradV({0, 0, W, 64}, {30, 33, 58, 255}, {18, 20, 36, 255});
+    fillRect(0, 63, W, 1, shade(C_BORDER, 0.8));
+    fillRect(0, 64, W, 3, {0, 0, 0, 70});
+    fillRound({326, 10, 246, 44}, 22, {10, 12, 22, 255});   // деньги
+    fillRound({580, 14, 124, 36}, 18, {10, 12, 22, 255});   // репутация
+    fillRound({716, 14, 214, 36}, 18, {10, 12, 22, 255});   // дата
     if (screen != SC_MAIN) {
         if (button({8, 8, 130, 48}, "< Назад")) goBack();
         const char* titles[] = {"", "", "Конструктор", "Запуск", "Офис", "Наука", "Рынки", "Статистика", "", "", "Платформа", "Итоги", "Награды", "Реклама", "Производство", "Патенты", "Событие", "Иск", "Банк", "Снабжение"};
@@ -3198,15 +3506,40 @@ void topBar() {
     {
         std::string m = fmtMoney(shownMoney);
         int msc = textW(m, 3) > 236 ? 2 : 3;
-        drawText(m, 340, msc == 3 ? 18 : 25, msc, G.money < 0 ? C_RED : C_GREEN);
+        drawTextC(m, 449, msc == 3 ? 20 : 25, msc, G.money < 0 ? C_RED : C_GREEN);
     }
-    drawText("Реп. " + std::to_string((int)G.rep), 590, 25, 2, C_YEL);
-    drawText(std::string(MONTHS[(G.day / 30) % 12]) + " " + std::to_string(START_YEAR + G.day / 360), 730, 25, 2, C_TEXT);
+    drawTextC("★ " + std::to_string((int)G.rep), 642, 25, 2, C_YEL);
+    drawTextC(std::string(MONTHS[(G.day / 30) % 12]) + " " + std::to_string(START_YEAR + G.day / 360), 823, 25, 2, C_TEXT);
     const char* sp[4] = {"||", "1x", "2x", "4x"};
     int x = W - 8 - 100 - 8 - 4 * 60;
     for (int i = 0; i < 4; ++i)
         if (button({x + i * 60, 8, 56, 48}, sp[i], true, G.speed == i)) G.speed = i;
     if (button({W - 108, 8, 100, 48}, "Меню", !(screen == SC_DESIGN && mustDesignFirst()))) setScreen(SC_PAUSE);
+}
+
+void drawIcon(int kind, int cx, int cy, int S, Col c);
+// Советник: самая важная подсказка на сейчас
+std::string advice(Col& col) {
+    if (G.money < 0) { col = C_RED; return "Баланс в минусе: возьмите кредит в банке или сократите расходы"; }
+    if (readySlot() >= 0) { col = C_GREEN; return "Устройство готово: откройте «Продукты» и запустите его"; }
+    for (size_t i = 0; i < G.products.size(); ++i) {
+        const Product& p = G.products[i];
+        if (p.onSale && p.stock < 1 && p.queue < 1) { col = C_RED; return "«" + p.name + "» закончился на складе: закажите партию"; }
+    }
+    for (size_t i = 0; i < G.staff.size(); ++i)
+        if (G.staff[i].ask > 0) { col = C_ORANGE; return G.staff[i].name + " просит прибавку: загляните в «Офис»"; }
+    for (size_t i = 0; i < G.staff.size(); ++i)
+        if (G.staff[i].mood < 40) { col = C_ORANGE; return "У команды плохое настроение: помогут премия или корпоратив"; }
+    if (!anyDev() && freeSlot() >= 0) { col = C_ACC; return "Команда простаивает: начните новое устройство в «Конструкторе»"; }
+    if (G.researching < 0) { col = C_ACC; return "Лаборатория простаивает: выберите исследование в «Науке»"; }
+    {
+        const RepPart r = repBreakdown();
+        if (r.defect >= 4) { col = C_ORANGE; return "Высокий брак портит репутацию: усильте контроль качества"; }
+        if (r.total < G.rep - 3) { col = C_ORANGE; return "Репутация падает: причины на вкладке «Статистика» > «Репутация»"; }
+    }
+    if ((int)G.staff.size() < OFFICE_CAP[G.office] && G.staff.size() < 3) { col = C_ACC; return "Наймите сотрудников в «Офисе»: команда ускоряет разработку"; }
+    col = C_GREEN;
+    return "Всё идёт по плану. Следите за складом и настроением команды";
 }
 
 void scrMain() {
@@ -3240,7 +3573,13 @@ void scrMain() {
     panel(16, 226, 600, 110, "Компания");
     drawText("Репутация", 32, 258, 2, C_TEXT);
     progressBar({170, 256, 300, 18}, G.rep / 100.0, C_YEL);
-    drawText(std::to_string((int)G.rep) + "/100", 484, 258, 2, C_YEL);
+    {
+        double tgt = repBreakdown().total;
+        std::string rs = std::to_string((int)G.rep);
+        if (tgt > G.rep + 1.5) rs += " ↑";
+        else if (tgt < G.rep - 1.5) rs += " ↓";
+        drawText(rs, 484, 258, 2, tgt < G.rep - 1.5 ? C_ORANGE : C_YEL);
+    }
     drawText("Фанаты: " + fmtNum(G.fans), 32, 284, 2, C_TEXT);
     drawText("Рынки: " + std::to_string(marketsOpen()) + "/" + std::to_string(NMARKET) + "  (объём x" +
                  fmt1(marketSize()) + ")", 32, 308, 2, C_TEXT);
@@ -3298,22 +3637,32 @@ void scrMain() {
     }
     if (!shown) drawText("Пока ничего не продаётся", 32, y, 2, C_DIM);
 
-    // Навигация
-    const char* labels[12] = {"Конструктор", "Запуск и продукты", "Офис и штат", "Исследования",
-                              "Маркетинг и рынки", "Статистика", "Производство", "Поставщики",
-                              "Банк и инвесторы", "Патенты и суды", "Сохранить", "Пауза и настройки"};
+    // Навигация: плитки с иконками
+    const char* labels[12] = {"Конструктор", "Продукты", "Офис", "Наука", "Рынки", "Статистика",
+                              "Завод", "Поставки", "Банк", "Патенты", "Сохранить", "Меню"};
+    const int icons[12] = {1, 16, 50, 51, 47, 40, 53, 46, 17, 43, 44, 18};
     const Screen targets[12] = {SC_DESIGN, SC_LAUNCH, SC_OFFICE, SC_RESEARCH, SC_MARKET, SC_STATS, SC_FACTORY, SC_SUPPLY,
                                 SC_BANK, SC_PATENT, SC_MAIN, SC_PAUSE};
     for (int i = 0; i < 12; ++i) {
-        SDL_Rect r = {640 + (i % 2) * 316, 76 + (i / 2) * 55, 304, 49};
-        if (button(r, labels[i], true, i == 1 && readySlot() >= 0)) {
+        SDL_Rect r = {640 + (i % 4) * 158, 76 + (i / 4) * 82, 150, 74};
+        bool hl = i == 1 && readySlot() >= 0;
+        bool hit = widget(r, true);
+        Col bg = hl ? C_BTNSEL : (hovered(r) ? C_BTNH : C_BTN);
+        fillRound({r.x, r.y + 3, r.w, r.h}, 14, {0, 0, 0, 120});
+        fillRound(r, 14, shade(bg, 0.68));
+        fillRound({r.x + 1, r.y + 1, r.w - 2, r.h - 3}, 13, bg);
+        drawIcon(icons[i], r.x + r.w / 2, r.y + 26, 34, hl ? C_TEXT : C_ACC);
+        drawTextC(labels[i], r.x + r.w / 2, r.y + 50, 2, C_TEXT);
+        drawFocus(r);
+        if (hit) {
+            sfx(SFX_CLICK);
             if (i == 10) toast(saveGame() ? "Игра сохранена" : "Не удалось сохранить");
             else setScreen(targets[i]);
         }
     }
     // Текущая цель
     {
-        SDL_Rect gr = {640, 410, 624, 86};
+        SDL_Rect gr = {640, 326, 624, 86};
         if (G.goalFlash > 0) G.goalFlash -= 1.0f / 60.0f;
         fillRound({gr.x + 3, gr.y + 4, gr.w, gr.h}, 12, {0, 0, 0, 90});
         fillRound(gr, 12, G.goalFlash > 0 ? shade(C_GREEN, 0.45) : Col{38, 44, 78, 255});
@@ -3330,12 +3679,22 @@ void scrMain() {
             drawText("Теперь вы сами решаете, куда вести корпорацию.", gr.x + 24, gr.y + 46, 2, C_DIM);
         }
     }
-    panel(640, 506, 624, 206, "Новости");
-    int ly = 538;
-    int start = std::max(0, (int)G.log.size() - 6);
+    // Советник: одна самая важная подсказка
+    {
+        Col ac = C_DIM;
+        std::string tip = advice(ac);
+        SDL_Rect ar = {640, 422, 624, 44};
+        fillRound(ar, 12, C_PANEL2);
+        fillRound({ar.x + 12, ar.y + 12, 20, 20}, 10, ac);
+        drawTextC("!", ar.x + 22, ar.y + 15, 2, C_PANEL2);
+        drawText(fitText(tip, 2, 570), ar.x + 44, ar.y + 15, 2, C_TEXT);
+    }
+    panel(640, 476, 624, 236, "Новости");
+    int ly = 508;
+    int start = std::max(0, (int)G.log.size() - 7);
     for (int i = (int)G.log.size() - 1; i >= start; --i) {
         drawText(fitText(G.log[(size_t)i], 2, 592), 656, ly, 2, i == (int)G.log.size() - 1 ? C_TEXT : C_DIM);
-        ly += 29;
+        ly += 28;
     }
 }
 
@@ -3344,7 +3703,7 @@ void scrMain() {
 // kind 10..16 — параметры (размер, цвет, экран, процессор, батарея, динамики, упаковка)
 // kind 17 — цена, 18 — название
 void drawIcon(int kind, int cx, int cy, int S, Col c) {
-    static const int catIcon[5] = {20, 0, 2, 19, 4};  // категории -> иконки
+    static const int catIcon[5] = {3, 0, 2, 19, 4};  // категории -> иконки
     if (kind >= 0 && kind < 5) kind = catIcon[kind];
     const double k = S / 40.0;
     const Col d = shade(c, 0.55);
@@ -3517,6 +3876,24 @@ void drawIcon(int kind, int cx, int cy, int S, Col c) {
             CI(20, 16, 12, c);
             CI(20, 16, 5, scrC);
             R2(17, 24, 6, 12, 3, c);
+            break;
+        case 50:  // люди
+            CI(14, 13, 6, c);
+            R2(5, 21, 18, 15, 6, c);
+            CI(28, 15, 5, d);
+            R2(21, 22, 14, 14, 5, d);
+            break;
+        case 51:  // колба
+            R2(13, 3, 14, 3, 1, c);
+            R2(16, 5, 8, 12, 1, c);
+            R2(8, 16, 24, 20, 8, c);
+            R2(11, 25, 18, 8, 4, scrC);
+            break;
+        case 53:  // завод
+            R2(6, 5, 6, 14, 0, c);
+            for (int i = 0; i < 3; ++i) R2(15 + i * 7, 12, 7, 8, 0, c);
+            R2(4, 18, 32, 18, 1, c);
+            for (int i = 0; i < 3; ++i) R2(8 + i * 9, 24, 5, 7, 0, scrC);
             break;
         case 17:  // цена
             R2(4, 10, 32, 20, 4, c);
@@ -3848,16 +4225,7 @@ void scrAwards() {
 
     if (T < listStart) {
         // Церемония: топ-3 компании по прибыли поднимаются по очереди — 3-е, 2-е, 1-е
-        double pp = 0;
-        int cnt = (int)G.histInc.size();
-        for (int i = std::max(0, cnt - 12); i < cnt; ++i) pp += G.histInc[(size_t)i] - G.histExp[(size_t)i];
-        std::vector<std::pair<double, std::string>> pods;
-        pods.push_back(std::make_pair(pp, G.company));
-        for (int i = 0; i < NCOMP; ++i) pods.push_back(std::make_pair(G.rivalProfit[i], std::string(COMP_NAMES[i])));
-        std::sort(pods.begin(), pods.end(),
-                  [](const std::pair<double, std::string>& x, const std::pair<double, std::string>& y) {
-                      return x.first > y.first;
-                  });
+        const std::vector<std::pair<double, std::string>>& pods = yearPods;
         drawTextCShadow("Топ-3 компании года", W / 2, 116, 3, C_ACC);
         fillRect(260, 540, 760, 2, C_BORDER);
         const int cxOf[3] = {640, 400, 880};   // 1-е, 2-е, 3-е место
@@ -4083,7 +4451,8 @@ void scrHall() {
     // Рейтинг: компания и конкуренты, число наград и прибыль за текущий год
     panel(796, 76, 468, 620, "Рейтинг компаний");
     int cnt[NCOMP + 1] = {};
-    for (size_t i = 0; i < G.awardLog.size(); ++i) cnt[G.awardLog[i].owner + 1]++;
+    for (size_t i = 0; i < G.awardLog.size(); ++i)
+        if (G.awardLog[i].owner < NCOMP) cnt[G.awardLog[i].owner + 1]++;  // ушедшие с рынка фирмы в рейтинг не входят
     double pp = 0;
     int n = (int)G.histInc.size();
     for (int i = std::max(0, n - 12); i < n; ++i) pp += G.histInc[(size_t)i] - G.histExp[(size_t)i];
@@ -4185,6 +4554,12 @@ void scrLaunch() {
                 if (resT < 1.5 + i * 0.3) break;
                 drawText(OUTLETS[i], 560, 280 + i * 32, 2, C_TEXT);
                 drawText(fmt1(resOutlet[i]), 800, 280 + i * 32, 2, ratingCol(resOutlet[i]));
+            }
+            {
+                std::string pros, cons;
+                reviewPoints(p, pros, cons);
+                drawText(fitText("Хвалят: " + (pros.empty() ? std::string("ничего особенного") : pros), 2, 560), 560, 412, 2, C_GREEN);
+                drawText(fitText("Ругают: " + (cons.empty() ? std::string("придраться не к чему") : cons), 2, 560), 560, 438, 2, C_ORANGE);
             }
             const char* rv;
             double r = p.rating;
@@ -4362,17 +4737,46 @@ void scrLaunch() {
     } else {
         drawText("Продажи завершены", 472, 380, 2, C_DIM);
     }
-    salesChart({468, 424, 780, 196}, p);
-    if (button({468, 630, 189, 60}, "Снять с продаж", p.onSale)) discontinue(p, "снят с продаж");
-    if (button({665, 630, 189, 60}, "Реклама", p.onSale)) {
+    if (!specView) {
+        salesChart({468, 424, 780, 196}, p);
+    } else {
+        // Лист характеристик, как в карточке товара
+        SDL_Rect sv = {468, 424, 780, 196};
+        fillRound(sv, 8, C_PANEL2);
+        beginArea(11, sv);
+        int ssy = scr(11), ry = 0;
+        const Cat& pc = CATS[p.cat];
+        for (int si = 0; si < NSEC; ++si) {
+            bool head = false;
+            for (int k = 0; k < 8 && SECS[si].p[k] >= 0; ++k) {
+                int q = SECS[si].p[k];
+                if (pc.w[q] <= 0) continue;
+                if (!head) {
+                    drawText(SECS[si].name, sv.x + 14, sv.y + 8 + ry - ssy, 2, C_ACC);
+                    ry += 28;
+                    head = true;
+                }
+                int yy = sv.y + 4 + ry - ssy;
+                if ((ry / 26) % 2 == 0) fillRect(sv.x + 8, yy - 3, sv.w - 28, 26, {255, 255, 255, 8});
+                drawText(PARAM_NAMES[q], sv.x + 30, yy, 2, C_DIM);
+                drawTextR(fitText(opt(q, p.p[q]).name, 2, 420), sv.x + sv.w - 30, yy, 2, C_TEXT);
+                ry += 26;
+            }
+            if (head) ry += 6;
+        }
+        endArea(ry + 8);
+    }
+    if (button({468, 630, 150, 60}, "Снять", p.onSale)) discontinue(p, "снят с продаж");
+    if (button({625, 630, 150, 60}, "Реклама", p.onSale)) {
         setScreen(SC_ADS);
     }
     {
         double uc = updateCost(p);
-        std::string lbl = p.fw >= FW_MAX ? std::string("Обновлён") : "Обновить " + fmtShort(uc);
-        if (button({862, 630, 189, 60}, lbl, canUpdate(p) && G.money >= uc)) releaseUpdate(p);
+        std::string lbl = p.fw >= FW_MAX ? std::string("Обновлён") : "Обнов. " + fmtShort(uc);
+        if (button({782, 630, 150, 60}, lbl, canUpdate(p) && G.money >= uc)) releaseUpdate(p);
     }
-    if (button({1059, 630, 189, 60}, "Новое", freeSlot() >= 0)) setScreen(SC_DESIGN);
+    if (button({939, 630, 150, 60}, specView ? "График" : "Характ.", true, specView)) { specView = !specView; U.scroll[11] = 0; }
+    if (button({1096, 630, 152, 60}, "Новое", freeSlot() >= 0)) setScreen(SC_DESIGN);
 }
 
 // ----- Банк, налоги, инвесторы -----
@@ -4794,14 +5198,70 @@ void financeCharts() {
                  fmt1(G.infl), 24, 680, 2, C_DIM);
 }
 
+// Вкладка «Репутация»: из чего она складывается и как её поднять
+void repTab() {
+    const RepPart r = repBreakdown();
+    panel(16, 136, 800, 576, "Из чего складывается репутация");
+    drawText("Сейчас", 40, 176, 2, C_DIM);
+    drawText(std::to_string((int)G.rep), 40, 198, 6, C_YEL);
+    int tx = 40 + textW(std::to_string((int)G.rep), 6) + 24;
+    bool up = r.total > G.rep + 1.5, down = r.total < G.rep - 1.5;
+    drawText(up ? "растёт" : (down ? "падает" : "стабильна"), tx, 204, 2, up ? C_GREEN : (down ? C_ORANGE : C_DIM));
+    drawText("заслуженный уровень: " + std::to_string((int)r.total), tx, 228, 2, C_TEXT);
+    drawTextR("Каждый месяц проходит 7% пути к нему", 796, 204, 2, C_DIM);
+    struct Row { const char* n; std::string hint; double v, mx; bool neg; };
+    const Row rows[6] = {
+        {"Качество устройств", r.models ? "средняя оценка за 3 года: " + fmt1(r.avgRating) : std::string("нет моделей за последние 3 года"), r.rating, 62, false},
+        {"Фанаты", fmtShort(G.fans) + " поклонников бренда", r.fans, 20, false},
+        {"Награды", "наград за 3 года: " + std::to_string(r.awardCount), r.awards, 12, false},
+        {"Сервисные центры", "уровень " + std::to_string(G.service) + " из " + std::to_string(SERVICE_MAX), r.service, 8, false},
+        {"Регион", std::string("имя страны: ") + REGS[G.home].name, r.region, 4, false},
+        {"Брак", "средний брак в продаже: " + fmt1(r.avgDefect * 100.0) + "%", r.defect, 15, true},
+    };
+    for (int i = 0; i < 6; ++i) {
+        int y = 276 + i * 64;
+        const Row& w = rows[i];
+        drawText(w.n, 40, y, 2, C_TEXT);
+        drawText(fitText(w.hint, 2, 430), 40, y + 24, 2, C_DIM);
+        progressBar({480, y + 6, 230, 16}, clampd(w.v / w.mx, 0.0, 1.0), w.neg ? C_RED : C_YEL);
+        drawTextR(std::string(w.neg ? "-" : "+") + std::to_string((int)std::round(w.v)), 796, y + 6, 2, w.neg ? (w.v > 0.5 ? C_RED : C_DIM) : C_GREEN);
+    }
+    drawText("Скандалы, отзывы партий и проигранные суды бьют по репутации сразу.", 40, 672, 2, C_DIM);
+
+    panel(832, 136, 432, 576, "Сервисные центры");
+    drawText("Уровень " + std::to_string(G.service) + " из " + std::to_string(SERVICE_MAX), 852, 176, 3, C_TEXT);
+    for (int i = 0; i < SERVICE_MAX; ++i) fillRound({852 + i * 98, 216, 90, 12}, 6, i < G.service ? C_GREEN : C_PANEL2);
+    drawText("Своя сеть ремонта и поддержки:", 852, 252, 2, C_DIM);
+    drawText("+2 к репутации за уровень", 852, 284, 2, C_TEXT);
+    drawText("-15% гарантийных расходов за уровень", 852, 310, 2, C_TEXT);
+    drawText("Содержание: " + fmtMoney(serviceUpkeep()) + "/мес", 852, 350, 2, C_DIM);
+    if (G.service < SERVICE_MAX) {
+        double c = serviceCost(G.service);
+        if (button({852, 400, 392, 62}, "Расширить сеть: " + fmtMoney(c), G.money >= c, true)) {
+            G.money -= c;
+            G.monExp += c;
+            G.service++;
+            logMsg("Сеть сервисных центров расширена до уровня " + std::to_string(G.service));
+            toast("Сервисные центры: уровень " + std::to_string(G.service));
+            sfx(SFX_CASH);
+        }
+    } else {
+        drawText("Сеть охватывает все ваши рынки", 852, 420, 2, C_GREEN);
+    }
+    drawText("Совет: быстрее всего репутацию", 852, 520, 2, C_DIM);
+    drawText("поднимают устройства с оценкой 7+", 852, 544, 2, C_DIM);
+    drawText("и низкий процент брака.", 852, 568, 2, C_DIM);
+}
+
 void scrStats() {
-    const char* tabs[4] = {"Финансы", "Рейтинги рынка", "Устройства", "Конкуренты"};
-    for (int i = 0; i < 4; ++i)
+    const char* tabs[5] = {"Финансы", "Рейтинги рынка", "Устройства", "Конкуренты", "Репутация"};
+    for (int i = 0; i < 5; ++i)
         if (button({16 + i * 250, 72, 240, 52}, tabs[i], true, statsTab == i) && statsTab != i) {
             statsTab = i;
             U.scroll[5] = 0;
         }
     if (statsTab == 0) { financeCharts(); return; }
+    if (statsTab == 4) { repTab(); return; }
     if (statsTab == 1) {
         drawText("Доля рынка (по выручке за месяц). Планка качества сейчас: " + fmt1(expectation()), 24, 138, 2, C_ACC);
         double last = G.histInc.empty() ? 0 : G.histInc.back();
@@ -5003,12 +5463,10 @@ void drawTitleBg() {
                 drawRect({x, y, 50, 56}, C_BORDER, 2);
                 fillRect(x + 7, y + 8, 36, 40, {70, 130, 190, 255});
                 break;
-            default:  // радиоприёмник
-                fillRect(x, y, 90, 54, body);
-                drawRect({x, y, 90, 54}, C_BORDER, 2);
-                fillCircle(x + 22, y + 28, 14, {70, 130, 190, 255});
-                fillRect(x + 48, y + 14, 32, 6, C_BORDER);
-                fillRect(x + 48, y + 30, 32, 6, C_BORDER);
+            default:  // планшет
+                fillRect(x, y, 96, 64, body);
+                drawRect({x, y, 96, 64}, C_BORDER, 2);
+                fillRect(x + 8, y + 8, 80, 48, {70, 130, 190, 255});
                 break;
         }
     }
@@ -5039,7 +5497,7 @@ void scrNewTitle() {
     drawTextCShadow("ДЕВАЙС-КОРП", W / 2, 96, 8, C_ACC);
     fillRect(W / 2 - 260, 168, 520, 4, C_ORANGE);
     drawTextC("Симулятор компании по разработке электроники", W / 2, 192, 2, C_TEXT);
-    drawTextC("От радиоприёмников 1960 года до умных устройств будущего", W / 2, 220, 2, C_DIM);
+    drawTextC("От первых устройств 1960 года до умной техники будущего", W / 2, 220, 2, C_DIM);
     int y = 300;
     if (saveExists) {
         if (button({440, y, 400, 64}, "Продолжить", true, true, 3)) {
@@ -5168,6 +5626,7 @@ void scrOver() {
 void renderFrame() {
     setc(C_BG);
     SDL_RenderClear(R);
+    fillGradV({0, 0, W, H}, {24, 26, 48, 255}, {9, 10, 18, 255});  // мягкий градиент вместо плоского фона
     if (screen == SC_NEW) scrNew();
     else if (screen == SC_OVER) scrOver();
     else {
